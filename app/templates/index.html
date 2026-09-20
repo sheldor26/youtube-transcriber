@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-boot>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>YouTube Transcriber</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260920-4" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260920-5" />
   </head>
   <body>
     <div class="app-shell">
@@ -554,6 +554,7 @@
       navItems.forEach((item) => item.addEventListener("click", () => activateView(item.dataset.view)));
       window.addEventListener("hashchange", () => activateView(location.hash.slice(1)));
       activateView(location.hash.slice(1));
+      window.setTimeout(() => document.documentElement.removeAttribute("data-boot"), 600);
     </script>
   </body>
 </html>

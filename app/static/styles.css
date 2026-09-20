@@ -167,13 +167,14 @@ body {
   border-radius: var(--radius-3);
   background: var(--panel);
   box-shadow: var(--shadow);
-  animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
-.panel:nth-of-type(2) { animation-delay: 0.06s; }
-.panel:nth-of-type(3) { animation-delay: 0.12s; }
-.panel:nth-of-type(4) { animation-delay: 0.18s; }
-.panel:nth-of-type(5) { animation-delay: 0.24s; }
+/* The boot animation plays once, for the view visible on first load — it's
+ * the terminal "coming online" moment. Switching views afterward removes
+ * [data-boot] (see the script), so navigating feels instant, like flipping
+ * between panes in a terminal, not like the page reloading every click. */
+html[data-boot] .panel { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+html[data-boot] .panel:nth-of-type(2) { animation-delay: 0.06s; }
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
