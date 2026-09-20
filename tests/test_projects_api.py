@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app import main
+from app import main, models, pipeline, routes
 from app.library import LibraryStore
 
 
@@ -17,14 +17,14 @@ class ProjectsApiTests(unittest.TestCase):
         self.transcripts = self.root / "transcripts"
         self.transcripts.mkdir()
         self.store = LibraryStore(self.root / "library.sqlite3")
-        self.library_patch = patch.object(main, "library", self.store)
+        self.library_patch = patch.object(routes, "library", self.store)
         self.library_patch.start()
         self.client = TestClient(main.app)
 
     def tearDown(self):
         self.library_patch.stop()
-        main.jobs.clear()
-        main.batches.clear()
+        models.jobs.clear()
+        models.batches.clear()
         self.temporary.cleanup()
 
     def test_project_import_and_editorial_export_use_only_selected_transcripts(self):
@@ -82,7 +82,7 @@ class ProjectsApiTests(unittest.TestCase):
         self.assertEqual(created.status_code, 200)
         project = created.json()["project"]
 
-        with patch.object(main, "start_batch_worker", return_value=True):
+        with patch.object(routes, "start_batch_worker", return_value=True):
             topic_batch = self.client.post(
                 "/api/batches",
                 data={
@@ -107,7 +107,7 @@ class ProjectsApiTests(unittest.TestCase):
         self.assertEqual(project_batch.json()["output_dir"], project["output_dir"])
 
     def test_single_video_topic_uses_a_subfolder(self):
-        with patch.object(main.threading, "Thread") as thread:
+        with patch.object(pipeline.threading, "Thread") as thread:
             response = self.client.post(
                 "/api/jobs",
                 data={

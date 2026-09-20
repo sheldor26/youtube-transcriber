@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
-from app import main
+from app import models, pipeline, youtube
 
 
 VIDEO_ID = "dQw4w9WgXcQ"
@@ -16,16 +16,19 @@ GOLDCAST_URL = "https://anthropic.ondemand.goldcast.io/on-demand/94d88402-155c-4
 
 class CoreBehaviourTests(unittest.TestCase):
     def test_youtube_url_validation_requires_a_real_youtube_host(self):
-        self.assertEqual(main.youtube_video_id(f"https://www.youtube.com/watch?v={VIDEO_ID}"), VIDEO_ID)
-        self.assertEqual(main.youtube_video_id(f"https://youtu.be/{VIDEO_ID}"), VIDEO_ID)
-        self.assertEqual(main.youtube_video_id(f"https://www.youtube.com/shorts/{VIDEO_ID}"), VIDEO_ID)
-        self.assertIsNone(main.youtube_video_id(f"https://notyoutube.com/watch?v={VIDEO_ID}"))
-        self.assertIsNone(main.youtube_video_id("https://www.youtube.com/watch?v=short"))
+        self.assertEqual(youtube.youtube_video_id(f"https://www.youtube.com/watch?v={VIDEO_ID}"), VIDEO_ID)
+        self.assertEqual(youtube.youtube_video_id(f"https://youtu.be/{VIDEO_ID}"), VIDEO_ID)
+        self.assertEqual(youtube.youtube_video_id(f"https://www.youtube.com/shorts/{VIDEO_ID}"), VIDEO_ID)
+        self.assertIsNone(youtube.youtube_video_id(f"https://notyoutube.com/watch?v={VIDEO_ID}"))
+        self.assertIsNone(youtube.youtube_video_id("https://www.youtube.com/watch?v=short"))
 
     def test_supported_media_urls_include_only_claude_academy_goldcast_recordings(self):
-        self.assertEqual(main.media_id(GOLDCAST_URL), "goldcast:94d88402-155c-4f2c-9621-8d6ef0cb754f")
-        self.assertIsNone(main.media_id("https://example.com/on-demand/94d88402-155c-4f2c-9621-8d6ef0cb754f"))
-        self.assertEqual(main.parse_urls(f"{GOLDCAST_URL}\nhttps://www.youtube.com/watch?v={VIDEO_ID}"), [GOLDCAST_URL, f"https://www.youtube.com/watch?v={VIDEO_ID}"])
+        self.assertEqual(youtube.media_id(GOLDCAST_URL), "goldcast:94d88402-155c-4f2c-9621-8d6ef0cb754f")
+        self.assertIsNone(youtube.media_id("https://example.com/on-demand/94d88402-155c-4f2c-9621-8d6ef0cb754f"))
+        self.assertEqual(
+            youtube.parse_urls(f"{GOLDCAST_URL}\nhttps://www.youtube.com/watch?v={VIDEO_ID}"),
+            [GOLDCAST_URL, f"https://www.youtube.com/watch?v={VIDEO_ID}"],
+        )
 
     def test_claude_academy_catalog_keeps_supported_recordings_only(self):
         payload = {
@@ -36,15 +39,17 @@ class CoreBehaviourTests(unittest.TestCase):
                 {"title": "Upcoming webinar", "recording": None},
             ]
         }
-        webinars = main.parse_claude_academy_webinars(payload)
+        webinars = youtube.parse_claude_academy_webinars(payload)
         self.assertEqual([webinar["platform"] for webinar in webinars], ["Goldcast", "YouTube"])
         self.assertEqual([webinar["title"] for webinar in webinars], ["Goldcast webinar", "YouTube webinar"])
 
     def test_checkbox_only_enables_when_submitted(self):
-        self.assertTrue(main.form_checkbox_enabled("on"))
-        self.assertTrue(main.form_checkbox_enabled("true"))
-        self.assertFalse(main.form_checkbox_enabled(""))
-        self.assertFalse(main.form_checkbox_enabled(None))
+        from app.utils import form_checkbox_enabled
+
+        self.assertTrue(form_checkbox_enabled("on"))
+        self.assertTrue(form_checkbox_enabled("true"))
+        self.assertFalse(form_checkbox_enabled(""))
+        self.assertFalse(form_checkbox_enabled(None))
 
     def test_youtube_operation_retries_a_broken_pipe(self):
         attempts = []
@@ -56,37 +61,39 @@ class CoreBehaviourTests(unittest.TestCase):
                 raise BrokenPipeError(32, "Broken pipe")
             return "ok"
 
-        with patch.object(main.time, "sleep") as sleep:
-            result = main.run_youtube_operation(
+        with patch.object(youtube.time, "sleep") as sleep:
+            result = youtube.run_youtube_operation(
                 flaky_operation,
                 on_retry=lambda attempt, total, _exc: retries.append((attempt, total)),
             )
 
         self.assertEqual(result, "ok")
         self.assertEqual(len(attempts), 2)
-        self.assertEqual(retries, [(1, main.YOUTUBE_OPERATION_ATTEMPTS)])
+        self.assertEqual(retries, [(1, youtube.YOUTUBE_OPERATION_ATTEMPTS)])
         sleep.assert_called_once_with(1)
 
     def test_year_filter_means_calendar_year(self):
         now = datetime(2026, 1, 2, 12, 0)
         base = {"duration": 600, "is_short": False}
-        self.assertTrue(main.search_video_matches({**base, "upload_date": "20260101"}, "all", "any", "year", "all", now))
-        self.assertFalse(main.search_video_matches({**base, "upload_date": "20251231"}, "all", "any", "year", "all", now))
+        self.assertTrue(youtube.search_video_matches({**base, "upload_date": "20260101"}, "all", "any", "year", "all", now))
+        self.assertFalse(youtube.search_video_matches({**base, "upload_date": "20251231"}, "all", "any", "year", "all", now))
 
     def test_short_reviews_are_not_classified_as_shorts_by_duration_or_title(self):
         review = {"duration": 120, "title": "Review completa, no shorts", "is_short": False}
-        self.assertTrue(main.search_video_matches(review, "videos", "any", "any", "all"))
-        self.assertFalse(main.search_video_matches(review, "shorts", "any", "any", "all"))
+        self.assertTrue(youtube.search_video_matches(review, "videos", "any", "any", "all"))
+        self.assertFalse(youtube.search_video_matches(review, "shorts", "any", "any", "all"))
 
     def test_conflicting_negations_and_numbers_are_not_deduplicated(self):
+        from app.content import sentences_are_duplicate
+
         self.assertFalse(
-            main.sentences_are_duplicate(
+            sentences_are_duplicate(
                 "La bateria dura dos horas grabando en alta resolucion.",
                 "La bateria no dura dos horas grabando en alta resolucion.",
             )
         )
         self.assertFalse(
-            main.sentences_are_duplicate(
+            sentences_are_duplicate(
                 "Esta camara permite grabar durante dos horas sin calentarse.",
                 "Esta camara permite grabar durante tres horas sin calentarse.",
             )
@@ -104,8 +111,8 @@ class CoreBehaviourTests(unittest.TestCase):
                 return {"title": "Primero enriquecido", "duration": 600}
             return {"title": "Segundo enriquecido", "duration": 600}
 
-        with patch.object(main, "fetch_video_metadata_with_timeout", side_effect=fake_metadata):
-            enriched = main.enrich_search_videos(videos)
+        with patch.object(youtube, "fetch_video_metadata_with_timeout", side_effect=fake_metadata):
+            enriched = youtube.enrich_search_videos(videos)
 
         self.assertEqual([video["id"] for video in enriched], ["first", "second"])
         self.assertEqual([video["title"] for video in enriched], ["Primero enriquecido", "Segundo enriquecido"])
@@ -121,8 +128,8 @@ class CoreBehaviourTests(unittest.TestCase):
             calls.append(url)
             return {"title": url.rsplit("/", 1)[-1], "duration": 600}
 
-        with patch.object(main, "fetch_video_metadata_with_timeout", side_effect=fake_metadata):
-            enriched, stats = main.enrich_search_videos(
+        with patch.object(youtube, "fetch_video_metadata_with_timeout", side_effect=fake_metadata):
+            enriched, stats = youtube.enrich_search_videos(
                 videos,
                 candidate_limit=2,
                 time_budget_seconds=1,
@@ -146,8 +153,8 @@ class CoreBehaviourTests(unittest.TestCase):
             return {"title": "Completo", "duration": 600}
 
         started = time.monotonic()
-        with patch.object(main, "fetch_video_metadata_with_timeout", side_effect=slow_metadata):
-            _, stats = main.enrich_search_videos(
+        with patch.object(youtube, "fetch_video_metadata_with_timeout", side_effect=slow_metadata):
+            _, stats = youtube.enrich_search_videos(
                 videos,
                 candidate_limit=4,
                 time_budget_seconds=0.01,
@@ -164,7 +171,7 @@ class CoreBehaviourTests(unittest.TestCase):
             path = Path(directory)
             expected = path / "Mismo titulo.txt"
             expected.write_text("Another transcript", encoding="utf-8")
-            job = main.Job(
+            job = models.Job(
                 id="job-test",
                 url=f"https://www.youtube.com/watch?v={VIDEO_ID}",
                 language="auto",
@@ -174,18 +181,18 @@ class CoreBehaviourTests(unittest.TestCase):
                 save_srt=False,
                 skip_existing=True,
             )
-            self.assertIsNone(main.find_existing_transcript(job, "Mismo titulo", {"id": VIDEO_ID}))
+            self.assertIsNone(pipeline.find_existing_transcript(job, "Mismo titulo", {"id": VIDEO_ID}))
 
             job.title = "Mismo titulo"
             job.transcript_path = str(expected)
             job.status = "done"
-            main.append_single_job_index(job)
-            self.assertEqual(main.find_existing_transcript(job, "Mismo titulo", {"id": VIDEO_ID}), expected)
+            models.append_single_job_index(job)
+            self.assertEqual(pipeline.find_existing_transcript(job, "Mismo titulo", {"id": VIDEO_ID}), expected)
 
     def test_batch_state_is_valid_json_after_atomic_write(self):
         with tempfile.TemporaryDirectory() as directory:
             state_path = Path(directory) / "batch-state-test.json"
-            batch = main.Batch(
+            batch = models.Batch(
                 id="batch-test",
                 urls=[f"https://www.youtube.com/watch?v={VIDEO_ID}"],
                 language="auto",
@@ -195,7 +202,7 @@ class CoreBehaviourTests(unittest.TestCase):
                 save_srt=False,
                 state_path=str(state_path),
             )
-            main.persist_batch_state(batch)
+            models.persist_batch_state(batch)
             self.assertEqual(json.loads(state_path.read_text(encoding="utf-8"))["id"], "batch-test")
 
     def test_batch_worker_cannot_start_twice(self):
@@ -206,14 +213,14 @@ class CoreBehaviourTests(unittest.TestCase):
             started.set()
             release.wait(timeout=1)
 
-        with patch.object(main, "process_batch", side_effect=fake_process):
-            self.assertTrue(main.start_batch_worker("worker-test"))
+        with patch.object(pipeline, "process_batch", side_effect=fake_process):
+            self.assertTrue(pipeline.start_batch_worker("worker-test"))
             self.assertTrue(started.wait(timeout=1))
-            self.assertFalse(main.start_batch_worker("worker-test"))
+            self.assertFalse(pipeline.start_batch_worker("worker-test"))
             release.set()
             for _ in range(20):
-                with main.batch_workers_lock:
-                    still_running = "worker-test" in main.batch_workers
+                with models.batch_workers_lock:
+                    still_running = "worker-test" in models.batch_workers
                 if not still_running:
                     break
                 time.sleep(0.01)
