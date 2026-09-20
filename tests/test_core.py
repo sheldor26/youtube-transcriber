@@ -11,6 +11,7 @@ from app import main
 
 
 VIDEO_ID = "dQw4w9WgXcQ"
+GOLDCAST_URL = "https://anthropic.ondemand.goldcast.io/on-demand/94d88402-155c-4f2c-9621-8d6ef0cb754f"
 
 
 class CoreBehaviourTests(unittest.TestCase):
@@ -20,6 +21,24 @@ class CoreBehaviourTests(unittest.TestCase):
         self.assertEqual(main.youtube_video_id(f"https://www.youtube.com/shorts/{VIDEO_ID}"), VIDEO_ID)
         self.assertIsNone(main.youtube_video_id(f"https://notyoutube.com/watch?v={VIDEO_ID}"))
         self.assertIsNone(main.youtube_video_id("https://www.youtube.com/watch?v=short"))
+
+    def test_supported_media_urls_include_only_claude_academy_goldcast_recordings(self):
+        self.assertEqual(main.media_id(GOLDCAST_URL), "goldcast:94d88402-155c-4f2c-9621-8d6ef0cb754f")
+        self.assertIsNone(main.media_id("https://example.com/on-demand/94d88402-155c-4f2c-9621-8d6ef0cb754f"))
+        self.assertEqual(main.parse_urls(f"{GOLDCAST_URL}\nhttps://www.youtube.com/watch?v={VIDEO_ID}"), [GOLDCAST_URL, f"https://www.youtube.com/watch?v={VIDEO_ID}"])
+
+    def test_claude_academy_catalog_keeps_supported_recordings_only(self):
+        payload = {
+            "webinars": [
+                {"title": "Goldcast webinar", "recording": {"kind": "goldcast", "url": GOLDCAST_URL}},
+                {"title": "YouTube webinar", "recording": {"kind": "youtube", "url": f"https://www.youtube.com/watch?v={VIDEO_ID}"}},
+                {"title": "Unsupported provider", "recording": {"kind": "vimeo", "url": "https://vimeo.com/12345"}},
+                {"title": "Upcoming webinar", "recording": None},
+            ]
+        }
+        webinars = main.parse_claude_academy_webinars(payload)
+        self.assertEqual([webinar["platform"] for webinar in webinars], ["Goldcast", "YouTube"])
+        self.assertEqual([webinar["title"] for webinar in webinars], ["Goldcast webinar", "YouTube webinar"])
 
     def test_checkbox_only_enables_when_submitted(self):
         self.assertTrue(main.form_checkbox_enabled("on"))

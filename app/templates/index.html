@@ -153,8 +153,16 @@
           <div><p class="eyebrow">Batch</p><h2>Transcribe multiple links</h2></div>
           <span id="batchStatusText" class="badge">Ready</span>
         </div>
+        <div class="academy-import">
+          <div>
+            <p class="eyebrow">Claude Academy</p>
+            <h3>Public webinar recordings</h3>
+          </div>
+          <button id="loadClaudeAcademy" type="button" class="secondary">Load recordings</button>
+        </div>
+        <p id="claudeAcademyStatus" class="source">Load the public catalog to add its available recordings to this batch.</p>
         <form id="batchForm" class="form compact">
-          <label>YouTube links<textarea name="links_text" id="batchLinks" class="links-box" placeholder="Paste one link per line."></textarea></label>
+          <label>Supported media links<textarea name="links_text" id="batchLinks" class="links-box" placeholder="Paste one link per line."></textarea></label>
           <div class="grid">
             <label>TXT or CSV file with links<input name="links_file" type="file" accept=".txt,.csv,text/plain" /></label>
             <label>Start numbering at<input name="start_number" type="number" min="1" placeholder="For example: 11" /></label>
@@ -237,6 +245,8 @@
       const batchMessage = document.querySelector("#batchMessage");
       const batchResults = document.querySelector("#batchResults");
       const resumeBatchForm = document.querySelector("#resumeBatchForm");
+      const loadClaudeAcademy = document.querySelector("#loadClaudeAcademy");
+      const claudeAcademyStatus = document.querySelector("#claudeAcademyStatus");
       const openFolderButtons = document.querySelectorAll(".open-folder");
       let activeSearchRequest = null;
 
@@ -408,6 +418,29 @@
       batchForm.elements.topic_name.addEventListener("input", () => {
         const topic = batchForm.elements.topic_name.value.trim();
         batchFolderHint.textContent = topic ? `This batch will be saved in a subfolder named: ${topic}` : "Use a topic to keep this batch in its own subfolder.";
+      });
+
+      loadClaudeAcademy.addEventListener("click", async () => {
+        const originalText = loadClaudeAcademy.textContent;
+        loadClaudeAcademy.disabled = true;
+        loadClaudeAcademy.textContent = "Loading...";
+        claudeAcademyStatus.textContent = "Loading the public Claude Academy catalog...";
+        try {
+          const data = await requestJson("/api/catalogs/claude-academy", { method: "POST" });
+          batchLinks.value = data.links.join("\n");
+          if (!batchForm.elements.topic_name.value.trim()) {
+            batchForm.elements.topic_name.value = "Claude Academy Webinars";
+            batchForm.elements.topic_name.dispatchEvent(new Event("input"));
+          }
+          const providers = Object.entries(data.providers || {}).map(([name, count]) => `${count} ${name}`).join(", ");
+          claudeAcademyStatus.textContent = `${data.count} public recordings loaded (${providers}). Review the batch settings, then start when ready.`;
+          batchLinks.focus();
+        } catch (error) {
+          claudeAcademyStatus.textContent = error.message;
+        } finally {
+          loadClaudeAcademy.disabled = false;
+          loadClaudeAcademy.textContent = originalText;
+        }
       });
 
       batchForm.addEventListener("submit", async (event) => {

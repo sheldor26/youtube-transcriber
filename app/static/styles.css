@@ -63,7 +63,8 @@ body {
 }
 
 h1,
-h2 {
+h2,
+h3 {
   margin: 0;
   letter-spacing: 0;
 }
@@ -75,6 +76,10 @@ h1 {
 
 h2 {
   font-size: 20px;
+}
+
+h3 {
+  font-size: 15px;
 }
 
 .badge,
@@ -97,6 +102,26 @@ h2 {
 
 .compact {
   margin-top: 18px;
+}
+
+.academy-import {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 14px 0;
+  border-block: 1px solid var(--line);
+}
+
+.academy-import .eyebrow {
+  margin-bottom: 3px;
+}
+
+.academy-import button {
+  width: auto;
+  padding-inline: 14px;
+  white-space: nowrap;
 }
 
 label {
@@ -376,8 +401,14 @@ pre {
   }
 
   .filter-button,
-  .folder-control button {
+  .folder-control button,
+  .academy-import button {
     width: 100%;
+  }
+
+  .academy-import {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   h1 {

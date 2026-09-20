@@ -1,12 +1,13 @@
 # YouTube Transcriber
 
-A local web app for saving YouTube video transcripts as plain text. It uses existing YouTube captions first and falls back to local Whisper transcription when captions are unavailable.
+A local web app for saving public video transcripts as plain text. It uses existing captions when available and falls back to local Whisper transcription when needed.
 
 ## Features
 
-- Transcribe one YouTube video or a batch of links.
+- Transcribe one supported video or a batch of links.
 - Extract every video link from a channel, including oldest, newest, most-viewed, and most-liked selections.
 - Search YouTube with filters for type, duration, upload date, captions, and ordering.
+- Load all currently public, on-demand Claude Academy webinar recordings into a batch.
 - Keep each topic in its own output subfolder.
 - Save TXT by default, with optional SRT output.
 - Skip videos that have already been transcribed.
@@ -21,6 +22,11 @@ A local web app for saving YouTube video transcripts as plain text. It uses exis
 - An internet connection to read public YouTube metadata and media.
 
 Age-restricted, private, removed, or sign-in-only videos may not be available to the application.
+
+## Supported sources
+
+- Public YouTube video URLs.
+- Public on-demand webinar recordings listed in [Claude Academy](https://academy.claude.com/webinars). The app accepts the YouTube and Anthropic Goldcast recordings published in that catalog; it does not bypass registrations, sign-in requirements, or other access controls.
 
 ## Install
 
@@ -44,8 +50,8 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 
 ## How transcription works
 
-1. The app checks for manual YouTube captions.
-2. It then checks for automatic YouTube captions.
+1. The app checks for manual captions.
+2. It then checks for automatic captions.
 3. If no usable captions are available, it downloads the audio and runs Whisper locally.
 
 The first Whisper job for a model downloads that model. `small` is a good accuracy-oriented default; `tiny` is best for quick drafts.

@@ -126,6 +126,8 @@ whisper_models_lock = threading.Lock()
 ALLOWED_MODELS = {"tiny", "base", "small", "medium"}
 ALLOWED_LANGUAGES = {"auto", "es", "en", "pt", "fr", "de"}
 YOUTUBE_SHORT_HOSTS = {"youtu.be", "www.youtu.be"}
+GOLDCAST_ON_DEMAND_HOST = "anthropic.ondemand.goldcast.io"
+CLAUDE_ACADEMY_WEBINARS_URL = "https://academy.claude.com/assets/data/webinars-latest.json"
 METADATA_WORKERS = 8
 SEARCH_METADATA_CANDIDATE_CAP = 40
 SEARCH_METADATA_TIME_BUDGET_SECONDS = 15
@@ -245,6 +247,27 @@ def youtube_video_id(url: str) -> Optional[str]:
     return candidate if re.fullmatch(r"[A-Za-z0-9_-]{6,}", candidate) else None
 
 
+def goldcast_webinar_id(url: str) -> Optional[str]:
+    """Accept only Anthropic's public on-demand Goldcast recordings."""
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in {"http", "https"} or (parsed.hostname or "").lower().rstrip(".") != GOLDCAST_ON_DEMAND_HOST:
+        return None
+    match = re.fullmatch(r"/on-demand/([0-9a-fA-F-]{36})/?", parsed.path)
+    return match.group(1).lower() if match else None
+
+
+def media_id(url: str) -> Optional[str]:
+    youtube_id = youtube_video_id(url)
+    if youtube_id:
+        return youtube_id
+    goldcast_id = goldcast_webinar_id(url)
+    return f"goldcast:{goldcast_id}" if goldcast_id else None
+
+
+def media_platform(url: str) -> str:
+    return "YouTube" if youtube_video_id(url) else "Goldcast"
+
+
 def destination_dir_for(output_dir: str) -> Path:
     return Path(os.path.expandvars(os.path.expanduser(output_dir))).resolve()
 
@@ -272,14 +295,14 @@ def find_indexed_transcript(output_dir: str, video_id: Optional[str]) -> Optiona
 
 
 def find_existing_transcript(job: Job, basename: str, info: Dict[str, Any]) -> Optional[Path]:
-    video_id = info.get("id") or youtube_video_id(job.url)
-    indexed = find_indexed_transcript(job.output_dir, video_id)
+    source_id = media_id(job.url) or info.get("id")
+    indexed = find_indexed_transcript(job.output_dir, source_id)
     if indexed:
         return indexed
 
-    # A title is not a stable identity. Preserve legacy title-only detection only
-    # when the URL itself does not expose a usable YouTube video ID.
-    if not video_id:
+    # A title is not a stable identity. Preserve title-only detection only for
+    # legacy URLs without a stable provider identifier.
+    if not source_id:
         expected = destination_dir_for(job.output_dir) / f"{basename}.txt"
         if expected.exists():
             return expected
@@ -302,7 +325,7 @@ def append_batch_indexes(batch: Batch, job: Job, order: int) -> None:
     row = {
         "batch_id": batch.id,
         "order": order,
-        "video_id": youtube_video_id(job.url),
+        "video_id": media_id(job.url),
         "title": job.title or "",
         "url": job.url,
         "status": job.status,
@@ -322,7 +345,7 @@ def append_single_job_index(job: Job) -> None:
     row = {
         "batch_id": "",
         "order": "",
-        "video_id": youtube_video_id(job.url),
+        "video_id": media_id(job.url),
         "title": job.title or "",
         "url": job.url,
         "status": job.status,
@@ -509,7 +532,7 @@ def extract_video_info(job: Job) -> Dict[str, Any]:
         on_retry=lambda attempt, total, _exc: update_job(
             job.id,
             progress=10,
-            message=f"YouTube interrupted the connection; retrying ({attempt + 1} of {total})",
+            message=f"{media_platform(job.url)} interrupted the connection; retrying ({attempt + 1} of {total})",
         ),
     )
 
@@ -821,7 +844,7 @@ def try_captions(job: Job, info: Dict[str, Any], job_dir: Path) -> Optional[List
     if not track:
         return None
 
-    update_job(job.id, progress=35, message="Downloading YouTube captions")
+    update_job(job.id, progress=35, message="Downloading available captions")
     caption_path = job_dir / "captions.vtt"
     if not caption_path.exists() or caption_path.stat().st_size == 0:
         download_caption_file(track["url"], caption_path)
@@ -861,13 +884,13 @@ def download_progress_hook(job_id: str):
             if total:
                 ratio = max(0.0, min(1.0, downloaded / total))
                 progress = 30 + int(ratio * 18)
-                message = f"Descargando audio: {format_bytes(downloaded)} de {format_bytes(total)}"
+                message = f"Downloading audio: {format_bytes(downloaded)} of {format_bytes(total)}"
             else:
                 progress = 32
-                message = f"Descargando audio: {format_bytes(downloaded)}"
+                message = f"Downloading audio: {format_bytes(downloaded)}"
             update_job(job_id, progress=progress, message=message)
         elif status == "finished":
-            update_job(job_id, progress=49, message="Audio descargado; preparando Whisper")
+            update_job(job_id, progress=49, message="Audio downloaded; preparing Whisper")
 
     return hook
 
@@ -883,7 +906,7 @@ def download_audio(job: Job, job_dir: Path) -> Path:
         reverse=True,
     )
     if cached_audio:
-        update_job(job.id, progress=49, message="Reutilizando audio descargado anteriormente")
+        update_job(job.id, progress=49, message="Reusing previously downloaded audio")
         return cached_audio[0]
 
     output_template = str(job_dir / "audio.%(ext)s")
@@ -900,7 +923,7 @@ def download_audio(job: Job, job_dir: Path) -> Path:
         "progress_hooks": [download_progress_hook(job.id)],
         "extractor_args": {"youtube": {"player_client": ["android", "ios", "tv"]}},
     }
-    update_job(job.id, progress=30, message="Descargando audio")
+    update_job(job.id, progress=30, message="Downloading audio")
 
     def download() -> None:
         with YoutubeDL(options) as ydl:
@@ -911,7 +934,7 @@ def download_audio(job: Job, job_dir: Path) -> Path:
         on_retry=lambda attempt, total, _exc: update_job(
             job.id,
             progress=30,
-            message=f"YouTube interrupted the download; retrying ({attempt + 1} of {total})",
+            message=f"{media_platform(job.url)} interrupted the download; retrying ({attempt + 1} of {total})",
         ),
     )
 
@@ -1009,10 +1032,10 @@ def process_job(job_id: str) -> None:
     persist_job_snapshot(job.id, public_job(job))
 
     try:
-        update_job(job.id, status="running", progress=10, message="Leyendo informacion del video")
+        update_job(job.id, status="running", progress=10, message="Reading video information")
         info = extract_video_info(job)
 
-        title = info.get("title") or "YouTube video"
+        title = info.get("title") or "Video"
         basename_source = f"{job.filename_prefix} {title}" if job.filename_prefix else title
         basename = sanitize_filename(basename_source)
         update_job(job.id, title=title, duration=info.get("duration"), output_basename=basename)
@@ -1042,16 +1065,16 @@ def process_job(job_id: str) -> None:
             segments = transcribe_with_whisper(job, audio_path)
 
         if not segments:
-            raise RuntimeError("Whisper no detecto voz hablada en el audio; el video puede ser musical, cinematografico o no tener narracion.")
+            raise RuntimeError("Whisper did not detect speech in the audio. The video may be musical, cinematic, or have no narration.")
 
-        update_job(job.id, progress=94, message="Guardando archivos")
+        update_job(job.id, progress=94, message="Saving files")
         outputs = write_outputs(job_dir, segments, job.output_basename or "youtube-transcript", job.save_srt)
         saved_outputs = copy_outputs_to_destination(job, outputs)
         update_job(
             job.id,
             status="done",
             progress=100,
-            message=f"Transcripcion lista en {Path(job.output_dir).expanduser()}",
+            message=f"Transcript ready in {Path(job.output_dir).expanduser()}",
             transcript_path=str(saved_outputs["txt"]),
             srt_path=str(saved_outputs["srt"]) if "srt" in saved_outputs else None,
         )
@@ -1059,7 +1082,7 @@ def process_job(job_id: str) -> None:
             try:
                 append_single_job_index(job)
             except Exception as exc:
-                update_job(job.id, message=f"Transcripcion lista, pero no pude actualizar el indice: {exc}")
+                update_job(job.id, message=f"Transcript is ready, but the index could not be updated: {exc}")
     except Exception as exc:
         update_job(job.id, status="error", error=str(exc), message="Could not complete the job", progress=100)
 
@@ -1071,13 +1094,50 @@ def parse_urls(raw_text: str) -> List[str]:
     seen = set()
     for candidate in candidates:
         cleaned = candidate.strip().rstrip(").]")
-        if not youtube_video_id(cleaned):
+        identifier = media_id(cleaned)
+        if not identifier:
             continue
-        dedupe_key = youtube_video_id(cleaned) or cleaned
-        if dedupe_key not in seen:
-            seen.add(dedupe_key)
+        if identifier not in seen:
+            seen.add(identifier)
             urls.append(cleaned)
     return urls
+
+
+def parse_claude_academy_webinars(payload: Any) -> List[Dict[str, str]]:
+    """Return only public, on-demand webinar recordings supported by this app."""
+    records = payload.get("webinars") if isinstance(payload, dict) else None
+    if not isinstance(records, list):
+        raise ValueError("Claude Academy returned an invalid webinar catalog.")
+
+    webinars: List[Dict[str, str]] = []
+    seen = set()
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        recording = record.get("recording")
+        if not isinstance(recording, dict):
+            continue
+        url = recording.get("url")
+        identifier = media_id(url) if isinstance(url, str) else None
+        if not identifier or identifier in seen:
+            continue
+        seen.add(identifier)
+        webinars.append(
+            {
+                "title": record.get("title") if isinstance(record.get("title"), str) else "Untitled webinar",
+                "url": url,
+                "platform": media_platform(url),
+                "id": identifier,
+            }
+        )
+    return webinars
+
+
+def fetch_claude_academy_webinars() -> List[Dict[str, str]]:
+    request = UrlRequest(CLAUDE_ACADEMY_WEBINARS_URL, headers={"User-Agent": "YouTube-Transcriber/1.0"})
+    with urlopen(request, timeout=30) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return parse_claude_academy_webinars(payload)
 
 
 KNOWLEDGE_THEMES = {
@@ -1528,7 +1588,7 @@ def process_batch(batch_id: str) -> None:
             else:
                 batch.failed += 1
             batch.progress = int(((index + 1) / max(1, len(batch.urls))) * 100)
-            batch.message = f"Procesados {index + 1} de {len(batch.urls)}"
+            batch.message = f"Processed {index + 1} of {len(batch.urls)}"
 
         try:
             append_batch_indexes(batch, finished_job, index + 1)
@@ -1540,7 +1600,7 @@ def process_batch(batch_id: str) -> None:
                     batch.project_id,
                     Path(finished_job.transcript_path),
                     {
-                        "video_id": youtube_video_id(finished_job.url),
+                        "video_id": media_id(finished_job.url),
                         "title": finished_job.title,
                         "source_url": finished_job.url,
                         "source_kind": finished_job.source,
@@ -1553,7 +1613,7 @@ def process_batch(batch_id: str) -> None:
         persist_batch_state(batch)
 
     if batch.generate_knowledge_base or batch.generate_consolidated_summary:
-        update_batch(batch.id, message="Preparando resultados consolidados")
+        update_batch(batch.id, message="Preparing consolidated results")
         try:
             if batch.generate_knowledge_base:
                 kb_path = build_knowledge_base(batch)
@@ -1762,6 +1822,23 @@ def create_editorial_material(
     return JSONResponse({"path": str(output_path)})
 
 
+@app.post("/api/catalogs/claude-academy")
+def import_claude_academy_webinars() -> JSONResponse:
+    try:
+        webinars = fetch_claude_academy_webinars()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not load the Claude Academy webinar catalog: {exc}") from exc
+    providers = Counter(webinar["platform"] for webinar in webinars)
+    return JSONResponse(
+        {
+            "count": len(webinars),
+            "providers": dict(providers),
+            "webinars": webinars,
+            "links": [webinar["url"] for webinar in webinars],
+        }
+    )
+
+
 @app.post("/api/jobs")
 def create_job(
     url: str = Form(...),
@@ -1772,8 +1849,8 @@ def create_job(
     topic_name: str = Form(""),
     save_srt: str = Form(""),
 ) -> JSONResponse:
-    if not youtube_video_id(url):
-        raise HTTPException(status_code=400, detail="Enter a valid YouTube URL.")
+    if not media_id(url):
+        raise HTTPException(status_code=400, detail="Enter a valid YouTube URL or a public Claude Academy Goldcast recording URL.")
 
     job_id = uuid.uuid4().hex[:12]
     selected_model = model_size if model_size in ALLOWED_MODELS else "tiny"
@@ -1929,7 +2006,7 @@ async def create_batch(
         file_text = (await links_file.read()).decode("utf-8", errors="ignore")
     urls = parse_urls(f"{links_text}\n{file_text}")
     if not urls:
-        raise HTTPException(status_code=400, detail="No YouTube links were found.")
+        raise HTTPException(status_code=400, detail="No supported YouTube or Claude Academy Goldcast links were found.")
 
     selected_model = model_size if model_size in ALLOWED_MODELS else "tiny"
     parsed_start_number = int(start_number) if start_number.strip().isdigit() else None
