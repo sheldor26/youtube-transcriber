@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YouTube Transcriber</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260920-public" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <div class="header">
+          <div>
+            <p class="eyebrow">Local transcription</p>
+            <h1>YouTube Transcriber</h1>
+          </div>
+          <span class="badge">TXT</span>
+        </div>
+
+        <form id="transcribeForm" class="form">
+          <label>
+            Video URL
+            <input name="url" type="url" placeholder="https://www.youtube.com/watch?v=..." required />
+          </label>
+          <div class="grid">
+            <label>
+              Language
+              <select name="language">
+                <option value="auto" selected>Detect automatically</option>
+                <option value="es">Spanish</option>
+                <option value="en">English</option>
+                <option value="pt">Portuguese</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+              </select>
+            </label>
+            <label>
+              Whisper model
+              <select name="model_size">
+                <option value="tiny" selected>Tiny (fast)</option>
+                <option value="base">Base (balanced)</option>
+                <option value="small">Small (more accurate)</option>
+                <option value="medium">Medium (slow)</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Topic / subfolder <span class="field-hint">Optional</span>
+            <input name="topic_name" type="text" placeholder="For example: Windows 11 Gaming" />
+            <span class="field-hint">A folder with this name will be created inside the output folder.</span>
+          </label>
+          <label class="check"><input name="prefer_captions" type="checkbox" checked />Prefer YouTube captions when available</label>
+          <label class="check"><input name="save_srt" type="checkbox" />Also save an SRT file</label>
+          <label>
+            Output folder
+            <span class="folder-control">
+              <input name="output_dir" type="text" value="{{ default_output_dir }}" />
+              <button type="button" class="secondary open-folder">Open output folder</button>
+            </span>
+          </label>
+          <button type="submit">Transcribe video</button>
+        </form>
+      </section>
+
+      <section class="panel status-panel">
+        <div class="status-head"><h2>Status</h2><span id="statusText">Ready</span></div>
+        <div class="progress"><div id="progressBar"></div></div>
+        <p id="message">Paste a video URL to get started.</p>
+        <p id="title" class="title"></p>
+        <p id="source" class="source"></p>
+        <p id="savePath" class="source"></p>
+        <div id="downloads" class="downloads" hidden>
+          <a id="txtLink" href="#">Download TXT</a>
+          <a id="srtLink" href="#">Download SRT</a>
+        </div>
+        <pre id="error" hidden></pre>
+      </section>
+
+      <section class="panel wide">
+        <div class="section-head">
+          <div><p class="eyebrow">Channel</p><h2>Extract video links from a channel</h2></div>
+          <span id="channelCount" class="badge">0 links</span>
+        </div>
+        <form id="channelForm" class="form compact">
+          <label>Channel URL<input name="channel_url" type="url" placeholder="https://www.youtube.com/@channel/videos" /></label>
+          <div class="grid three">
+            <label>
+              Sort and filter
+              <select name="filter_type">
+                <option value="all">All videos, oldest first</option>
+                <option value="newest">Newest videos</option>
+                <option value="oldest">Oldest videos</option>
+                <option value="most_viewed">Most viewed</option>
+                <option value="most_liked">Most liked</option>
+              </select>
+            </label>
+            <label>Limit<input name="limit" type="number" min="1" value="10" /></label>
+            <button type="submit">Extract links</button>
+          </div>
+        </form>
+        <textarea id="channelLinks" class="links-box" placeholder="Extracted links will appear here."></textarea>
+        <div class="actions">
+          <button id="sendToBatch" type="button">Use links in batch</button>
+          <button id="copyChannelLinks" type="button" class="secondary">Copy links</button>
+        </div>
+
+        <form id="searchForm" class="form compact search-form">
+          <div class="search-query-row">
+            <label>Search YouTube videos<input name="query" type="text" placeholder="For example: DJI Osmo Pocket 3 review" /></label>
+            <button id="toggleSearchFilters" type="button" class="secondary filter-button">Add filters</button>
+          </div>
+          <div id="searchFilters" class="search-filters" hidden>
+            <label>
+              Type
+              <select name="video_type"><option value="all">Videos and Shorts</option><option value="videos">Videos only</option><option value="shorts">Shorts only</option></select>
+            </label>
+            <label>
+              Duration
+              <select name="duration_filter"><option value="any">Any duration</option><option value="short">Under 3 minutes</option><option value="medium">3 to 20 minutes</option><option value="long">Over 20 minutes</option></select>
+            </label>
+            <label>
+              Upload date
+              <select name="upload_filter"><option value="any">Any time</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option><option value="year">This year</option></select>
+            </label>
+            <label>
+              Feature
+              <select name="feature"><option value="all">Any feature</option><option value="live">Live</option><option value="hd">HD</option><option value="4k">4K</option><option value="subtitles">Captions available</option></select>
+            </label>
+          </div>
+          <div class="filter-presets" aria-label="Search presets">
+            <span>Quick presets:</span>
+            <button id="yearPopularPreset" type="button" class="secondary preset-button">This year + most viewed</button>
+            <button id="yearRelevantPreset" type="button" class="secondary preset-button">This year + relevance</button>
+          </div>
+          <div class="grid three">
+            <label>
+              Priority
+              <select name="sort"><option value="relevance">Relevance</option><option value="most_viewed">Most viewed</option><option value="newest">Newest</option></select>
+            </label>
+            <label>Limit<input name="limit" type="number" min="1" max="50" value="10" /></label>
+            <button id="searchSubmit" type="submit">Search videos</button>
+          </div>
+        </form>
+        <textarea id="searchLinks" class="links-box compact-box" placeholder="Search results will appear here."></textarea>
+        <div class="actions">
+          <button id="sendSearchToBatch" type="button">Use search results in batch</button>
+          <span id="searchCount" class="search-status">No search yet</span>
+        </div>
+      </section>
+
+      <section class="panel wide">
+        <div class="section-head">
+          <div><p class="eyebrow">Batch</p><h2>Transcribe multiple links</h2></div>
+          <span id="batchStatusText" class="badge">Ready</span>
+        </div>
+        <form id="batchForm" class="form compact">
+          <label>YouTube links<textarea name="links_text" id="batchLinks" class="links-box" placeholder="Paste one link per line."></textarea></label>
+          <div class="grid">
+            <label>TXT or CSV file with links<input name="links_file" type="file" accept=".txt,.csv,text/plain" /></label>
+            <label>Start numbering at<input name="start_number" type="number" min="1" placeholder="For example: 11" /></label>
+          </div>
+          <div class="grid">
+            <label>
+              Language
+              <select name="language"><option value="auto" selected>Detect automatically</option><option value="es">Spanish</option><option value="en">English</option><option value="pt">Portuguese</option><option value="fr">French</option><option value="de">German</option></select>
+            </label>
+            <label>
+              Whisper model
+              <select name="model_size"><option value="tiny">Tiny (fast)</option><option value="base">Base (balanced)</option><option value="small" selected>Small (more accurate)</option><option value="medium">Medium (slow)</option></select>
+            </label>
+          </div>
+          <label>
+            Topic / subfolder <span class="field-hint">Optional</span>
+            <input name="topic_name" type="text" placeholder="For example: Windows 11 Gaming" />
+            <span id="batchFolderHint" class="field-hint">Use a topic to keep this batch in its own subfolder.</span>
+          </label>
+          <label>
+            Output folder
+            <span class="folder-control">
+              <input name="output_dir" type="text" value="{{ default_output_dir }}" />
+              <button type="button" class="secondary open-folder">Open output folder</button>
+            </span>
+          </label>
+          <label class="check"><input name="prefer_captions" type="checkbox" checked />Prefer YouTube captions when available</label>
+          <label class="check"><input name="save_srt" type="checkbox" />Also save an SRT file</label>
+          <label class="check"><input name="skip_existing" type="checkbox" checked />Skip videos that already have a transcript</label>
+          <label class="check"><input name="generate_consolidated_summary" type="checkbox" checked />Create a consolidated, de-duplicated summary when complete</label>
+          <label>Summary word limit<input name="summary_max_words" type="number" min="500" max="20000" value="3500" /></label>
+          <button type="submit">Transcribe batch</button>
+        </form>
+        <div class="progress"><div id="batchProgressBar"></div></div>
+        <p id="batchMessage" class="source">No active batch.</p>
+        <pre id="batchResults" hidden></pre>
+        <form id="resumeBatchForm" class="resume-form">
+          <label>
+            Previous batch state file
+            <span class="folder-control">
+              <input name="state_path" type="text" placeholder="Paste a batch-state-...json path to resume" />
+              <button type="submit" class="secondary">Resume batch</button>
+            </span>
+          </label>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const form = document.querySelector("#transcribeForm");
+      const statusText = document.querySelector("#statusText");
+      const progressBar = document.querySelector("#progressBar");
+      const message = document.querySelector("#message");
+      const title = document.querySelector("#title");
+      const source = document.querySelector("#source");
+      const savePath = document.querySelector("#savePath");
+      const downloads = document.querySelector("#downloads");
+      const txtLink = document.querySelector("#txtLink");
+      const srtLink = document.querySelector("#srtLink");
+      const errorBox = document.querySelector("#error");
+      const channelForm = document.querySelector("#channelForm");
+      const channelCount = document.querySelector("#channelCount");
+      const channelLinks = document.querySelector("#channelLinks");
+      const sendToBatch = document.querySelector("#sendToBatch");
+      const copyChannelLinks = document.querySelector("#copyChannelLinks");
+      const searchForm = document.querySelector("#searchForm");
+      const searchLinks = document.querySelector("#searchLinks");
+      const searchCount = document.querySelector("#searchCount");
+      const searchSubmit = document.querySelector("#searchSubmit");
+      const searchFilters = document.querySelector("#searchFilters");
+      const toggleSearchFilters = document.querySelector("#toggleSearchFilters");
+      const yearPopularPreset = document.querySelector("#yearPopularPreset");
+      const yearRelevantPreset = document.querySelector("#yearRelevantPreset");
+      const sendSearchToBatch = document.querySelector("#sendSearchToBatch");
+      const batchForm = document.querySelector("#batchForm");
+      const batchLinks = document.querySelector("#batchLinks");
+      const batchFolderHint = document.querySelector("#batchFolderHint");
+      const batchStatusText = document.querySelector("#batchStatusText");
+      const batchProgressBar = document.querySelector("#batchProgressBar");
+      const batchMessage = document.querySelector("#batchMessage");
+      const batchResults = document.querySelector("#batchResults");
+      const resumeBatchForm = document.querySelector("#resumeBatchForm");
+      const openFolderButtons = document.querySelectorAll(".open-folder");
+      let activeSearchRequest = null;
+
+      async function requestJson(url, options = {}) {
+        try {
+          const response = await fetch(url, options);
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || "The application could not complete the request.");
+          return data;
+        } catch (error) {
+          if (error.name === "AbortError") throw new Error("The search took too long and was cancelled.");
+          if (error instanceof TypeError) throw new Error("Could not connect to the application. Make sure it is still running.");
+          throw error;
+        }
+      }
+
+      function renderJob(job) {
+        statusText.textContent = job.status;
+        progressBar.style.width = `${job.progress || 0}%`;
+        message.textContent = job.message || "";
+        title.textContent = job.title || "";
+        source.textContent = job.source ? `Source: ${job.source}` : "";
+        savePath.textContent = job.transcript_path ? `Saved to: ${job.transcript_path}` : "";
+        downloads.hidden = job.status !== "done";
+        if (job.status === "done") {
+          txtLink.href = `/api/jobs/${job.id}/download/txt`;
+          srtLink.hidden = !job.srt_path;
+          if (job.srt_path) srtLink.href = `/api/jobs/${job.id}/download/srt`;
+        }
+        errorBox.hidden = job.status !== "error";
+        if (job.status === "error") errorBox.textContent = job.error || "Unknown error";
+      }
+
+      async function pollJob(jobId) {
+        try {
+          const job = await requestJson(`/api/jobs/${jobId}`);
+          renderJob(job);
+          if (["queued", "running"].includes(job.status)) setTimeout(() => pollJob(jobId), 1200);
+        } catch (error) {
+          message.textContent = `${error.message} Retrying...`;
+          setTimeout(() => pollJob(jobId), 3000);
+        }
+      }
+
+      function renderBatch(batch) {
+        batchStatusText.textContent = batch.status;
+        batchProgressBar.style.width = `${batch.progress || 0}%`;
+        const summary = `${batch.completed || 0} complete, ${batch.skipped || 0} skipped, ${batch.failed || 0} failed, ${batch.total || 0} total`;
+        const paths = [
+          batch.output_dir ? `Folder: ${batch.output_dir}` : "",
+          batch.index_path ? `Index: ${batch.index_path}` : "",
+          batch.consolidated_summary_path ? `Consolidated summary: ${batch.consolidated_summary_path}` : "",
+          batch.state_path ? `State file: ${batch.state_path}` : "",
+          batch.error || "",
+        ].filter(Boolean);
+        batchMessage.textContent = `${batch.message || ""} (${summary})${paths.length ? `\n${paths.join("\n")}` : ""}`;
+        batchResults.hidden = !(batch.results && batch.results.length);
+        if (!batchResults.hidden) {
+          batchResults.textContent = batch.results.slice(-20).map((item) =>
+            `${item.status.toUpperCase()} ${item.title || item.url}${item.transcript_path ? ` -> ${item.transcript_path}` : ""}${item.error ? ` - ${item.error}` : ""}`,
+          ).join("\n");
+        }
+      }
+
+      async function pollBatch(batchId) {
+        try {
+          const batch = await requestJson(`/api/batches/${batchId}`);
+          renderBatch(batch);
+          if (["queued", "running"].includes(batch.status)) setTimeout(() => pollBatch(batchId), 1600);
+        } catch (error) {
+          batchStatusText.textContent = "offline";
+          batchMessage.textContent = `${error.message} Retrying...`;
+          setTimeout(() => pollBatch(batchId), 3000);
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        downloads.hidden = true;
+        errorBox.hidden = true;
+        progressBar.style.width = "0%";
+        message.textContent = "Creating job...";
+        try {
+          const job = await requestJson("/api/jobs", { method: "POST", body: new FormData(form) });
+          renderJob(job);
+          pollJob(job.id);
+        } catch (error) {
+          errorBox.hidden = false;
+          errorBox.textContent = error.message;
+        }
+      });
+
+      channelForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        channelCount.textContent = "Loading...";
+        channelLinks.value = "";
+        try {
+          const data = await requestJson("/api/channel/extract", { method: "POST", body: new FormData(channelForm) });
+          channelCount.textContent = `${data.count} links`;
+          channelLinks.value = data.links.join("\n");
+        } catch (error) {
+          channelCount.textContent = "Error";
+          channelLinks.value = error.message;
+        }
+      });
+
+      toggleSearchFilters.addEventListener("click", () => {
+        searchFilters.hidden = !searchFilters.hidden;
+        toggleSearchFilters.textContent = searchFilters.hidden ? "Add filters" : "Hide filters";
+      });
+
+      function applySearchPreset(sort) {
+        searchFilters.hidden = false;
+        toggleSearchFilters.textContent = "Hide filters";
+        searchForm.elements.upload_filter.value = "year";
+        searchForm.elements.sort.value = sort;
+      }
+
+      yearPopularPreset.addEventListener("click", () => applySearchPreset("most_viewed"));
+      yearRelevantPreset.addEventListener("click", () => applySearchPreset("relevance"));
+
+      searchForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        activeSearchRequest?.controller.abort();
+        const request = { controller: new AbortController() };
+        activeSearchRequest = request;
+        const timeoutId = window.setTimeout(() => request.controller.abort(), 30000);
+        const startedAt = Date.now();
+        const progressInterval = window.setInterval(() => {
+          searchCount.textContent = `Searching and verifying results... ${Math.floor((Date.now() - startedAt) / 1000)}s`;
+        }, 1000);
+        searchSubmit.disabled = true;
+        searchLinks.value = "";
+        try {
+          const data = await requestJson("/api/search", { method: "POST", body: new FormData(searchForm), signal: request.controller.signal });
+          if (activeSearchRequest !== request) return;
+          const metadata = data.metadata || {};
+          const coverage = metadata.attempted ? ` Metadata: ${metadata.verified}/${metadata.attempted} verified.` : "";
+          searchCount.textContent = `${data.count} selected from ${data.matched} matches (${data.evaluated} evaluated, ${data.received} received).${coverage}`;
+          searchLinks.value = data.links.join("\n");
+        } catch (error) {
+          if (activeSearchRequest === request) {
+            searchCount.textContent = "Error";
+            searchLinks.value = error.message || "No videos found";
+          }
+        } finally {
+          window.clearTimeout(timeoutId);
+          window.clearInterval(progressInterval);
+          if (activeSearchRequest === request) {
+            activeSearchRequest = null;
+            searchSubmit.disabled = false;
+          }
+        }
+      });
+
+      sendToBatch.addEventListener("click", () => {
+        batchLinks.value = channelLinks.value;
+        batchLinks.focus();
+      });
+      copyChannelLinks.addEventListener("click", async () => navigator.clipboard.writeText(channelLinks.value));
+      sendSearchToBatch.addEventListener("click", () => {
+        batchLinks.value = searchLinks.value;
+        if (!batchForm.elements.topic_name.value.trim() && searchForm.elements.query.value.trim()) {
+          batchForm.elements.topic_name.value = searchForm.elements.query.value.trim();
+          batchForm.elements.topic_name.dispatchEvent(new Event("input"));
+        }
+        batchLinks.focus();
+      });
+      batchForm.elements.topic_name.addEventListener("input", () => {
+        const topic = batchForm.elements.topic_name.value.trim();
+        batchFolderHint.textContent = topic ? `This batch will be saved in a subfolder named: ${topic}` : "Use a topic to keep this batch in its own subfolder.";
+      });
+
+      batchForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        batchResults.hidden = true;
+        batchProgressBar.style.width = "0%";
+        batchStatusText.textContent = "creating";
+        batchMessage.textContent = "Creating batch...";
+        try {
+          const batch = await requestJson("/api/batches", { method: "POST", body: new FormData(batchForm) });
+          renderBatch(batch);
+          pollBatch(batch.id);
+        } catch (error) {
+          batchStatusText.textContent = "error";
+          batchMessage.textContent = error.message;
+        }
+      });
+
+      resumeBatchForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        batchStatusText.textContent = "resuming";
+        batchMessage.textContent = "Loading batch state...";
+        try {
+          const batch = await requestJson("/api/batches/resume", { method: "POST", body: new FormData(resumeBatchForm) });
+          renderBatch(batch);
+          pollBatch(batch.id);
+        } catch (error) {
+          batchStatusText.textContent = "error";
+          batchMessage.textContent = error.message;
+        }
+      });
+
+      openFolderButtons.forEach((button) => {
+        button.addEventListener("click", async () => {
+          const folderInput = button.closest("form").querySelector('input[name="output_dir"]');
+          const originalText = button.textContent;
+          button.disabled = true;
+          button.textContent = "Opening...";
+          try {
+            const data = await requestJson("/api/open-folder", {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({ output_dir: folderInput.value }),
+            });
+            folderInput.value = data.path;
+          } catch (error) {
+            window.alert(error.message);
+          } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
