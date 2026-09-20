@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import threading
 import time
@@ -216,7 +217,12 @@ def transcribe_with_whisper(job: Job, audio_path: Path) -> List[TranscriptSegmen
             with whisper_models_lock:
                 model = whisper_models.get(job.model_size)
                 if model is None:
-                    model = WhisperModel(job.model_size, device="auto", compute_type="int8")
+                    model = WhisperModel(
+                        job.model_size,
+                        device="auto",
+                        compute_type="int8",
+                        cpu_threads=os.cpu_count() or 4,
+                    )
                     whisper_models[job.model_size] = model
         finally:
             load_stop.set()
