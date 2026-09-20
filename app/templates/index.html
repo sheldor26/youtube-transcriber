@@ -4,224 +4,255 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>YouTube Transcriber</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260920-3" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260920-4" />
   </head>
   <body>
-    <main class="shell">
-      <section class="panel">
-        <div class="header">
-          <div>
-            <p class="eyebrow">Local transcription</p>
-            <h1>YouTube Transcriber</h1>
-          </div>
-          <span class="badge">TXT</span>
+    <div class="app-shell">
+      <nav class="sidebar">
+        <div class="sidebar-brand">
+          <p class="eyebrow">Local transcription</p>
+          <h1>YouTube Transcriber</h1>
         </div>
+        <button class="nav-item" type="button" data-view="transcribe">Transcribe</button>
+        <button class="nav-item" type="button" data-view="channel">By Channel</button>
+        <button class="nav-item" type="button" data-view="topic">By Topic</button>
+        <button class="nav-item" type="button" data-view="batch">Batch</button>
+      </nav>
 
-        <form id="transcribeForm" class="form">
-          <label>
-            Video URL
-            <input name="url" type="url" placeholder="https://www.youtube.com/watch?v=..." required />
-          </label>
-          <div class="grid">
-            <label>
-              Language
-              <select name="language">
-                <option value="auto" selected>Detect automatically</option>
-                <option value="es">Spanish</option>
-                <option value="en">English</option>
-                <option value="pt">Portuguese</option>
-                <option value="fr">French</option>
-                <option value="de">German</option>
-              </select>
-            </label>
-            <label>
-              Whisper model
-              <select name="model_size">
-                <option value="tiny" selected>Tiny (fast)</option>
-                <option value="base">Base (balanced)</option>
-                <option value="small">Small (more accurate)</option>
-                <option value="medium">Medium (slow)</option>
-              </select>
-            </label>
-          </div>
-          <span class="field-hint">Tiny: seconds per video. Small: a few minutes. Medium: several minutes; use it only when Tiny/Small get names or technical terms wrong.</span>
-          <label>
-            Topic / subfolder <span class="field-hint">Optional</span>
-            <input name="topic_name" type="text" placeholder="For example: Windows 11 Gaming" />
-            <span class="field-hint">A folder with this name will be created inside the output folder.</span>
-          </label>
-          <label class="check"><input name="prefer_captions" type="checkbox" checked />Prefer YouTube captions when available</label>
-          <label class="check"><input name="save_srt" type="checkbox" />Also save an SRT file</label>
-          <label>
-            Output folder
-            <span class="folder-control">
-              <input name="output_dir" type="text" value="{{ default_output_dir }}" />
-              <button type="button" class="secondary open-folder">Open output folder</button>
-            </span>
-          </label>
-          <button type="submit">Transcribe video</button>
-        </form>
-      </section>
+      <main class="views">
+        <section class="view" data-view="transcribe">
+          <div class="shell">
+            <section class="panel">
+              <div class="header">
+                <h2>Transcribe a video</h2>
+                <span class="badge">TXT</span>
+              </div>
 
-      <section class="panel status-panel">
-        <div class="status-head"><h2>Status</h2><span id="statusText">Ready</span></div>
-        <div class="progress"><div id="progressBar"></div></div>
-        <p id="message">Paste a video URL to get started.</p>
-        <p id="title" class="title"></p>
-        <p id="source" class="source"></p>
-        <p id="savePath" class="source"></p>
-        <div id="downloads" class="downloads" hidden>
-          <a id="txtLink" href="#">Download TXT</a>
-          <a id="srtLink" href="#">Download SRT</a>
-        </div>
-        <pre id="error" hidden></pre>
-      </section>
+              <form id="transcribeForm" class="form">
+                <label>
+                  Video URL
+                  <input name="url" type="url" placeholder="https://www.youtube.com/watch?v=..." required />
+                </label>
+                <div class="grid">
+                  <label>
+                    Language
+                    <select name="language">
+                      <option value="auto" selected>Detect automatically</option>
+                      <option value="es">Spanish</option>
+                      <option value="en">English</option>
+                      <option value="pt">Portuguese</option>
+                      <option value="fr">French</option>
+                      <option value="de">German</option>
+                    </select>
+                  </label>
+                  <label>
+                    Whisper model
+                    <select name="model_size">
+                      <option value="tiny" selected>Tiny (fast)</option>
+                      <option value="base">Base (balanced)</option>
+                      <option value="small">Small (more accurate)</option>
+                      <option value="medium">Medium (slow)</option>
+                    </select>
+                  </label>
+                </div>
+                <span class="field-hint">Tiny: seconds per video. Small: a few minutes. Medium: several minutes; use it only when Tiny/Small get names or technical terms wrong.</span>
+                <label>
+                  Topic / subfolder <span class="field-hint">Optional</span>
+                  <input name="topic_name" type="text" placeholder="For example: Windows 11 Gaming" />
+                  <span class="field-hint">A folder with this name will be created inside the output folder.</span>
+                </label>
+                <label class="check"><input name="prefer_captions" type="checkbox" checked />Prefer YouTube captions when available</label>
+                <label class="check"><input name="save_srt" type="checkbox" />Also save an SRT file</label>
+                <label>
+                  Output folder
+                  <span class="folder-control">
+                    <input name="output_dir" type="text" value="{{ default_output_dir }}" />
+                    <button type="button" class="secondary open-folder">Open output folder</button>
+                  </span>
+                </label>
+                <button type="submit">Transcribe video</button>
+              </form>
+            </section>
 
-      <section class="panel wide">
-        <div class="section-head">
-          <div><p class="eyebrow">Channel</p><h2>Extract video links from a channel</h2></div>
-          <span id="channelCount" class="badge">0 links</span>
-        </div>
-        <form id="channelForm" class="form compact">
-          <label>Channel URL<input name="channel_url" type="url" placeholder="https://www.youtube.com/@channel/videos" /></label>
-          <div class="grid three">
-            <label>
-              Sort and filter
-              <select name="filter_type">
-                <option value="all">All videos, oldest first</option>
-                <option value="newest">Newest videos</option>
-                <option value="oldest">Oldest videos</option>
-                <option value="most_viewed">Most viewed</option>
-                <option value="most_liked">Most liked</option>
-              </select>
-            </label>
-            <label>Limit<input name="limit" type="number" min="1" value="10" /></label>
-            <button type="submit">Extract links</button>
+            <section class="panel status-panel">
+              <div class="status-head"><h2>Status</h2><span id="statusText">Ready</span></div>
+              <div class="progress"><div id="progressBar"></div></div>
+              <p id="message">Paste a video URL to get started.</p>
+              <p id="title" class="title"></p>
+              <p id="source" class="source"></p>
+              <p id="savePath" class="source"></p>
+              <div id="downloads" class="downloads" hidden>
+                <a id="txtLink" href="#">Download TXT</a>
+                <a id="srtLink" href="#">Download SRT</a>
+              </div>
+              <pre id="error" hidden></pre>
+            </section>
           </div>
-        </form>
-        <textarea id="channelLinks" class="links-box" placeholder="Extracted links will appear here."></textarea>
-        <div class="actions">
-          <button id="sendToBatch" type="button">Use links in batch</button>
-          <button id="copyChannelLinks" type="button" class="secondary">Copy links</button>
-        </div>
+        </section>
 
-        <form id="searchForm" class="form compact search-form">
-          <div class="search-query-row">
-            <label>Search YouTube videos<input name="query" type="text" placeholder="For example: DJI Osmo Pocket 3 review" /></label>
-            <button id="toggleSearchFilters" type="button" class="secondary filter-button">Add filters</button>
+        <section class="view" data-view="channel" hidden>
+          <div class="shell">
+            <section class="panel wide">
+              <div class="section-head">
+                <div><p class="eyebrow">Channel</p><h2>Extract video links from a channel</h2></div>
+                <span id="channelCount" class="badge">0 links</span>
+              </div>
+              <form id="channelForm" class="form compact">
+                <label>Channel URL<input name="channel_url" type="url" placeholder="https://www.youtube.com/@channel/videos" /></label>
+                <div class="grid three">
+                  <label>
+                    Sort and filter
+                    <select name="filter_type">
+                      <option value="all">All videos, oldest first</option>
+                      <option value="newest">Newest videos</option>
+                      <option value="oldest">Oldest videos</option>
+                      <option value="most_viewed">Most viewed</option>
+                      <option value="most_liked">Most liked</option>
+                    </select>
+                  </label>
+                  <label>Limit<input name="limit" type="number" min="1" value="10" /></label>
+                  <button type="submit">Extract links</button>
+                </div>
+              </form>
+              <textarea id="channelLinks" class="links-box" placeholder="Extracted links will appear here."></textarea>
+              <div class="actions">
+                <button id="sendToBatch" type="button">Use links in batch</button>
+                <button id="copyChannelLinks" type="button" class="secondary">Copy links</button>
+              </div>
+            </section>
           </div>
-          <div id="searchFilters" class="search-filters" hidden>
-            <label>
-              Type
-              <select name="video_type"><option value="all">Videos and Shorts</option><option value="videos">Videos only</option><option value="shorts">Shorts only</option></select>
-            </label>
-            <label>
-              Duration
-              <select name="duration_filter"><option value="any">Any duration</option><option value="short">Under 3 minutes</option><option value="medium">3 to 20 minutes</option><option value="long">Over 20 minutes</option></select>
-            </label>
-            <label>
-              Upload date
-              <select name="upload_filter"><option value="any">Any time</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option><option value="year">This year</option></select>
-            </label>
-            <label>
-              Feature
-              <select name="feature"><option value="all">Any feature</option><option value="live">Live</option><option value="hd">HD</option><option value="4k">4K</option><option value="subtitles">Captions available</option></select>
-            </label>
-          </div>
-          <div class="filter-presets" aria-label="Search presets">
-            <span>Quick presets:</span>
-            <button id="yearPopularPreset" type="button" class="secondary preset-button">This year + most viewed</button>
-            <button id="yearRelevantPreset" type="button" class="secondary preset-button">This year + relevance</button>
-          </div>
-          <div class="grid three">
-            <label>
-              Priority
-              <select name="sort"><option value="relevance">Relevance</option><option value="most_viewed">Most viewed</option><option value="newest">Newest</option></select>
-            </label>
-            <label>Limit<input name="limit" type="number" min="1" max="50" value="10" /></label>
-            <button id="searchSubmit" type="submit">Search videos</button>
-          </div>
-        </form>
-        <textarea id="searchLinks" class="links-box compact-box" placeholder="Search results will appear here."></textarea>
-        <div class="actions">
-          <button id="sendSearchToBatch" type="button">Use search results in batch</button>
-          <span id="searchCount" class="search-status">No search yet</span>
-        </div>
-      </section>
+        </section>
 
-      <section class="panel wide">
-        <div class="section-head">
-          <div><p class="eyebrow">Batch</p><h2>Transcribe multiple links</h2></div>
-          <span id="batchStatusText" class="badge">Ready</span>
-        </div>
-        <details class="collapsible">
-          <summary>Claude Academy — public webinar recordings</summary>
-          <div class="academy-import">
-            <div>
-              <p class="eyebrow">Claude Academy</p>
-              <h3>Public webinar recordings</h3>
-            </div>
-            <button id="loadClaudeAcademy" type="button" class="secondary">Load recordings</button>
+        <section class="view" data-view="topic" hidden>
+          <div class="shell">
+            <section class="panel wide">
+              <div class="section-head">
+                <div><p class="eyebrow">Topic</p><h2>Search YouTube by topic</h2></div>
+              </div>
+              <form id="searchForm" class="form compact search-form">
+                <div class="search-query-row">
+                  <label>Search YouTube videos<input name="query" type="text" placeholder="For example: DJI Osmo Pocket 3 review" /></label>
+                  <button id="toggleSearchFilters" type="button" class="secondary filter-button">Add filters</button>
+                </div>
+                <div id="searchFilters" class="search-filters" hidden>
+                  <label>
+                    Type
+                    <select name="video_type"><option value="all">Videos and Shorts</option><option value="videos">Videos only</option><option value="shorts">Shorts only</option></select>
+                  </label>
+                  <label>
+                    Duration
+                    <select name="duration_filter"><option value="any">Any duration</option><option value="short">Under 3 minutes</option><option value="medium">3 to 20 minutes</option><option value="long">Over 20 minutes</option></select>
+                  </label>
+                  <label>
+                    Upload date
+                    <select name="upload_filter"><option value="any">Any time</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option><option value="year">This year</option></select>
+                  </label>
+                  <label>
+                    Feature
+                    <select name="feature"><option value="all">Any feature</option><option value="live">Live</option><option value="hd">HD</option><option value="4k">4K</option><option value="subtitles">Captions available</option></select>
+                  </label>
+                </div>
+                <div class="filter-presets" aria-label="Search presets">
+                  <span>Quick presets:</span>
+                  <button id="yearPopularPreset" type="button" class="secondary preset-button">This year + most viewed</button>
+                  <button id="yearRelevantPreset" type="button" class="secondary preset-button">This year + relevance</button>
+                </div>
+                <div class="grid three">
+                  <label>
+                    Priority
+                    <select name="sort"><option value="relevance">Relevance</option><option value="most_viewed">Most viewed</option><option value="newest">Newest</option></select>
+                  </label>
+                  <label>Limit<input name="limit" type="number" min="1" max="50" value="10" /></label>
+                  <button id="searchSubmit" type="submit">Search videos</button>
+                </div>
+              </form>
+              <textarea id="searchLinks" class="links-box compact-box" placeholder="Search results will appear here."></textarea>
+              <div class="actions">
+                <button id="sendSearchToBatch" type="button">Use search results in batch</button>
+                <span id="searchCount" class="search-status">No search yet</span>
+              </div>
+            </section>
           </div>
-          <p id="claudeAcademyStatus" class="source">Load the public catalog to add its available recordings to this batch.</p>
-        </details>
-        <form id="batchForm" class="form compact">
-          <label>Supported media links<textarea name="links_text" id="batchLinks" class="links-box" placeholder="Paste one link per line."></textarea></label>
-          <div class="grid">
-            <label>TXT or CSV file with links<input name="links_file" type="file" accept=".txt,.csv,text/plain" /></label>
-            <label>Start numbering at<input name="start_number" type="number" min="1" placeholder="For example: 11" /></label>
+        </section>
+
+        <section class="view" data-view="batch" hidden>
+          <div class="shell">
+            <section class="panel wide">
+              <div class="section-head">
+                <div><p class="eyebrow">Batch</p><h2>Transcribe multiple links</h2></div>
+                <span id="batchStatusText" class="badge">Ready</span>
+              </div>
+              <details class="collapsible">
+                <summary>Claude Academy — public webinar recordings</summary>
+                <div class="academy-import">
+                  <div>
+                    <p class="eyebrow">Claude Academy</p>
+                    <h3>Public webinar recordings</h3>
+                  </div>
+                  <button id="loadClaudeAcademy" type="button" class="secondary">Load recordings</button>
+                </div>
+                <p id="claudeAcademyStatus" class="source">Load the public catalog to add its available recordings to this batch.</p>
+              </details>
+              <form id="batchForm" class="form compact">
+                <label>Supported media links<textarea name="links_text" id="batchLinks" class="links-box" placeholder="Paste one link per line."></textarea></label>
+                <div class="grid">
+                  <label>TXT or CSV file with links<input name="links_file" type="file" accept=".txt,.csv,text/plain" /></label>
+                  <label>Start numbering at<input name="start_number" type="number" min="1" placeholder="For example: 11" /></label>
+                </div>
+                <div class="grid">
+                  <label>
+                    Language
+                    <select name="language"><option value="auto" selected>Detect automatically</option><option value="es">Spanish</option><option value="en">English</option><option value="pt">Portuguese</option><option value="fr">French</option><option value="de">German</option></select>
+                  </label>
+                  <label>
+                    Whisper model
+                    <select name="model_size"><option value="tiny">Tiny (fast)</option><option value="base">Base (balanced)</option><option value="small" selected>Small (more accurate)</option><option value="medium">Medium (slow)</option></select>
+                  </label>
+                </div>
+                <span class="field-hint">In a batch this runs once per video, so Small/Medium add up fast across many links.</span>
+                <label>
+                  Topic / subfolder <span class="field-hint">Optional</span>
+                  <input name="topic_name" type="text" placeholder="For example: Windows 11 Gaming" />
+                  <span id="batchFolderHint" class="field-hint">Use a topic to keep this batch in its own subfolder.</span>
+                </label>
+                <label>
+                  Output folder
+                  <span class="folder-control">
+                    <input name="output_dir" type="text" value="{{ default_output_dir }}" />
+                    <button type="button" class="secondary open-folder">Open output folder</button>
+                  </span>
+                </label>
+                <label class="check"><input name="prefer_captions" type="checkbox" checked />Prefer YouTube captions when available</label>
+                <label class="check"><input name="save_srt" type="checkbox" />Also save an SRT file</label>
+                <label class="check"><input name="skip_existing" type="checkbox" checked />Skip videos that already have a transcript</label>
+                <label class="check"><input name="generate_consolidated_summary" type="checkbox" checked />Create a consolidated, de-duplicated summary when complete</label>
+                <label>
+                  Summary word limit
+                  <input name="summary_max_words" type="number" min="500" max="20000" value="3500" />
+                  <span class="field-hint">3500 words ≈ 7 pages. Raise it only if the summary keeps getting cut short.</span>
+                </label>
+                <button type="submit">Transcribe batch</button>
+              </form>
+              <div class="progress"><div id="batchProgressBar"></div></div>
+              <p id="batchMessage" class="source">No active batch.</p>
+              <pre id="batchResults" hidden></pre>
+              <details class="collapsible">
+                <summary>Resume a previous batch</summary>
+                <form id="resumeBatchForm" class="resume-form">
+                  <label>
+                    Previous batch state file
+                    <span class="folder-control">
+                      <input name="state_path" type="text" placeholder="Paste a batch-state-...json path to resume" />
+                      <button type="submit" class="secondary">Resume batch</button>
+                    </span>
+                  </label>
+                </form>
+              </details>
+            </section>
           </div>
-          <div class="grid">
-            <label>
-              Language
-              <select name="language"><option value="auto" selected>Detect automatically</option><option value="es">Spanish</option><option value="en">English</option><option value="pt">Portuguese</option><option value="fr">French</option><option value="de">German</option></select>
-            </label>
-            <label>
-              Whisper model
-              <select name="model_size"><option value="tiny">Tiny (fast)</option><option value="base">Base (balanced)</option><option value="small" selected>Small (more accurate)</option><option value="medium">Medium (slow)</option></select>
-            </label>
-          </div>
-          <span class="field-hint">In a batch this runs once per video, so Small/Medium add up fast across many links.</span>
-          <label>
-            Topic / subfolder <span class="field-hint">Optional</span>
-            <input name="topic_name" type="text" placeholder="For example: Windows 11 Gaming" />
-            <span id="batchFolderHint" class="field-hint">Use a topic to keep this batch in its own subfolder.</span>
-          </label>
-          <label>
-            Output folder
-            <span class="folder-control">
-              <input name="output_dir" type="text" value="{{ default_output_dir }}" />
-              <button type="button" class="secondary open-folder">Open output folder</button>
-            </span>
-          </label>
-          <label class="check"><input name="prefer_captions" type="checkbox" checked />Prefer YouTube captions when available</label>
-          <label class="check"><input name="save_srt" type="checkbox" />Also save an SRT file</label>
-          <label class="check"><input name="skip_existing" type="checkbox" checked />Skip videos that already have a transcript</label>
-          <label class="check"><input name="generate_consolidated_summary" type="checkbox" checked />Create a consolidated, de-duplicated summary when complete</label>
-          <label>
-            Summary word limit
-            <input name="summary_max_words" type="number" min="500" max="20000" value="3500" />
-            <span class="field-hint">3500 words ≈ 7 pages. Raise it only if the summary keeps getting cut short.</span>
-          </label>
-          <button type="submit">Transcribe batch</button>
-        </form>
-        <div class="progress"><div id="batchProgressBar"></div></div>
-        <p id="batchMessage" class="source">No active batch.</p>
-        <pre id="batchResults" hidden></pre>
-        <details class="collapsible">
-          <summary>Resume a previous batch</summary>
-          <form id="resumeBatchForm" class="resume-form">
-            <label>
-              Previous batch state file
-              <span class="folder-control">
-                <input name="state_path" type="text" placeholder="Paste a batch-state-...json path to resume" />
-                <button type="submit" class="secondary">Resume batch</button>
-              </span>
-            </label>
-          </form>
-        </details>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
 
     <script>
       const form = document.querySelector("#transcribeForm");
@@ -416,6 +447,7 @@
 
       sendToBatch.addEventListener("click", () => {
         batchLinks.value = channelLinks.value;
+        activateView("batch");
         batchLinks.focus();
       });
       copyChannelLinks.addEventListener("click", async () => navigator.clipboard.writeText(channelLinks.value));
@@ -425,6 +457,7 @@
           batchForm.elements.topic_name.value = searchForm.elements.query.value.trim();
           batchForm.elements.topic_name.dispatchEvent(new Event("input"));
         }
+        activateView("batch");
         batchLinks.focus();
       });
       batchForm.elements.topic_name.addEventListener("input", () => {
@@ -506,6 +539,21 @@
           }
         });
       });
+
+      const navItems = document.querySelectorAll(".nav-item");
+      const views = document.querySelectorAll(".view");
+      const viewNames = Array.from(views).map((view) => view.dataset.view);
+
+      function activateView(name) {
+        const target = viewNames.includes(name) ? name : "transcribe";
+        views.forEach((view) => { view.hidden = view.dataset.view !== target; });
+        navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === target));
+        history.replaceState(null, "", `#${target}`);
+      }
+
+      navItems.forEach((item) => item.addEventListener("click", () => activateView(item.dataset.view)));
+      window.addEventListener("hashchange", () => activateView(location.hash.slice(1)));
+      activateView(location.hash.slice(1));
     </script>
   </body>
 </html>
