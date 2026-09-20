@@ -30,7 +30,14 @@ from app.models import (
     update_batch,
     update_job,
 )
-from app.transcription import copy_outputs_to_destination, download_audio, transcribe_with_whisper, try_captions, write_outputs
+from app.transcription import (
+    copy_outputs_to_destination,
+    delete_downloaded_media,
+    download_audio,
+    transcribe_with_whisper,
+    try_captions,
+    write_outputs,
+)
 from app.utils import destination_dir_for, sanitize_filename
 from app.youtube import extract_video_info, media_id
 
@@ -119,6 +126,7 @@ def process_job(job_id: str) -> None:
         update_job(job.id, progress=94, message="Saving files")
         outputs = write_outputs(job_dir, segments, job.output_basename or "youtube-transcript", job.save_srt)
         saved_outputs = copy_outputs_to_destination(job, outputs)
+        delete_downloaded_media(job_dir)
         update_job(
             job.id,
             status="done",

@@ -294,6 +294,15 @@ def write_outputs(job_dir: Path, segments: List[TranscriptSegment], basename: st
     return outputs
 
 
+def delete_downloaded_media(job_dir: Path) -> None:
+    """Remove the raw audio/captions once the transcript is written; they can weigh
+    gigabytes and are never read again after this point."""
+    for pattern in ("audio.*", "captions.vtt"):
+        for path in job_dir.glob(pattern):
+            if path.is_file():
+                path.unlink(missing_ok=True)
+
+
 def copy_outputs_to_destination(job: Job, outputs: Dict[str, Path]) -> Dict[str, Path]:
     destination_dir = destination_dir_for(job.output_dir)
     destination_dir.mkdir(parents=True, exist_ok=True)
