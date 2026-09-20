@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>YouTube Transcriber</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260920-2" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260920-3" />
   </head>
   <body>
     <main class="shell">
@@ -42,6 +42,7 @@
                 <option value="small">Small (more accurate)</option>
                 <option value="medium">Medium (slow)</option>
               </select>
+              <span class="field-hint">Tiny: seconds per video. Small: a few minutes. Medium: several minutes; use it only when Tiny/Small get names or technical terms wrong.</span>
             </label>
           </div>
           <label>
@@ -153,14 +154,17 @@
           <div><p class="eyebrow">Batch</p><h2>Transcribe multiple links</h2></div>
           <span id="batchStatusText" class="badge">Ready</span>
         </div>
-        <div class="academy-import">
-          <div>
-            <p class="eyebrow">Claude Academy</p>
-            <h3>Public webinar recordings</h3>
+        <details class="collapsible">
+          <summary>Claude Academy — public webinar recordings</summary>
+          <div class="academy-import">
+            <div>
+              <p class="eyebrow">Claude Academy</p>
+              <h3>Public webinar recordings</h3>
+            </div>
+            <button id="loadClaudeAcademy" type="button" class="secondary">Load recordings</button>
           </div>
-          <button id="loadClaudeAcademy" type="button" class="secondary">Load recordings</button>
-        </div>
-        <p id="claudeAcademyStatus" class="source">Load the public catalog to add its available recordings to this batch.</p>
+          <p id="claudeAcademyStatus" class="source">Load the public catalog to add its available recordings to this batch.</p>
+        </details>
         <form id="batchForm" class="form compact">
           <label>Supported media links<textarea name="links_text" id="batchLinks" class="links-box" placeholder="Paste one link per line."></textarea></label>
           <div class="grid">
@@ -175,6 +179,7 @@
             <label>
               Whisper model
               <select name="model_size"><option value="tiny">Tiny (fast)</option><option value="base">Base (balanced)</option><option value="small" selected>Small (more accurate)</option><option value="medium">Medium (slow)</option></select>
+              <span class="field-hint">In a batch this runs once per video, so Small/Medium add up fast across many links.</span>
             </label>
           </div>
           <label>
@@ -193,21 +198,28 @@
           <label class="check"><input name="save_srt" type="checkbox" />Also save an SRT file</label>
           <label class="check"><input name="skip_existing" type="checkbox" checked />Skip videos that already have a transcript</label>
           <label class="check"><input name="generate_consolidated_summary" type="checkbox" checked />Create a consolidated, de-duplicated summary when complete</label>
-          <label>Summary word limit<input name="summary_max_words" type="number" min="500" max="20000" value="3500" /></label>
+          <label>
+            Summary word limit
+            <input name="summary_max_words" type="number" min="500" max="20000" value="3500" />
+            <span class="field-hint">3500 words ≈ 7 pages. Raise it only if the summary keeps getting cut short.</span>
+          </label>
           <button type="submit">Transcribe batch</button>
         </form>
         <div class="progress"><div id="batchProgressBar"></div></div>
         <p id="batchMessage" class="source">No active batch.</p>
         <pre id="batchResults" hidden></pre>
-        <form id="resumeBatchForm" class="resume-form">
-          <label>
-            Previous batch state file
-            <span class="folder-control">
-              <input name="state_path" type="text" placeholder="Paste a batch-state-...json path to resume" />
-              <button type="submit" class="secondary">Resume batch</button>
-            </span>
-          </label>
-        </form>
+        <details class="collapsible">
+          <summary>Resume a previous batch</summary>
+          <form id="resumeBatchForm" class="resume-form">
+            <label>
+              Previous batch state file
+              <span class="folder-control">
+                <input name="state_path" type="text" placeholder="Paste a batch-state-...json path to resume" />
+                <button type="submit" class="secondary">Resume batch</button>
+              </span>
+            </label>
+          </form>
+        </details>
       </section>
     </main>
 

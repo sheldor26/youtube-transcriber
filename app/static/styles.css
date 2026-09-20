@@ -457,6 +457,30 @@ button:disabled {
 
 .resume-form > label { flex: 1; }
 
+.collapsible {
+  margin: var(--space-4) 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.collapsible summary {
+  cursor: pointer;
+  color: var(--ink-dim);
+  font-size: var(--text-sm);
+  list-style: none;
+}
+
+.collapsible summary::-webkit-details-marker { display: none; }
+
+.collapsible summary::before {
+  content: "▸ ";
+  color: var(--ink-faint);
+}
+
+.collapsible[open] summary::before { content: "▾ "; }
+
+.collapsible[open] summary { margin-bottom: var(--space-3); }
+
 pre {
   max-height: 320px;
   margin: var(--space-4) 0 0;
