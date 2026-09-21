@@ -13,7 +13,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from app.claude_academy import fetch_claude_academy_webinars
-from app.config import ALLOWED_LANGUAGES, ALLOWED_MODELS, JOBS_DIR, library
+from app.config import ALLOWED_LANGUAGES, ALLOWED_MODELS, BASE_DIR, JOBS_DIR, library
 from app.content import build_editorial_material
 from app.discovery import enrich_search_videos, extract_channel_videos, search_video_matches, video_record
 from app.library import LibraryError
@@ -31,7 +31,11 @@ SEARCH_METADATA_TIME_BUDGET_SECONDS = 15
 
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", {"request": request, "default_output_dir": default_output_dir()})
+    static_version = int((BASE_DIR / "app" / "static" / "styles.css").stat().st_mtime)
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "default_output_dir": default_output_dir(), "static_version": static_version},
+    )
 
 
 @router.get("/api/projects")

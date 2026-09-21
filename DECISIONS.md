@@ -9,6 +9,31 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0010
+date: 2026-09-21
+tags: [ui, architecture]
+-->
+### Compute the stylesheet cache-bust from mtime, not by hand
+
+**Context.** D-0005 accepted "cache-busted by hand" as the cost of shipping the UI with no
+build step: `index.html` hardcoded `styles.css?v=20260920-5`, bumped manually
+after every CSS edit, and forgetting to bump it is exactly the kind of mistake
+M-0002 already happened once (a stale stylesheet looked like a CSS bug).
+
+**Decision.** The `/` route now stats `styles.css` and passes its mtime as `static_version`
+into the template, which renders `styles.css?v={{ static_version }}`. No
+bundler, no build step, no hash file — one `Path.stat()` call already paid
+for by the request FastAPI is already handling.
+
+**Consequences.** The cache-bust is now correct by construction: it changes exactly when the
+file's mtime changes, with nothing to remember and nothing to forget. Verified
+against the served page, not the template — fetched `/` and confirmed the
+query string matches `stat -f %m`, then touched the file and confirmed it
+moved with no edit to `index.html`. The cost is one `stat()` syscall per
+request to `/`, which is negligible next to the request FastAPI is already
+serving.
+
+<!-- bitacora:entry
 id: D-0009
 date: 2026-09-21
 tags: [structure, architecture]

@@ -47,6 +47,9 @@ updated: 2026-09-21
   `app/claude_academy.py`, not configurable — a one-line comment there points
   at `D-0008`, so the reasoning survives the next reader without them having
   to find the logbook first.
+- The stylesheet cache-bust (`styles.css?v=...`) is computed from the file's
+  mtime in `routes.py`'s `/` handler, not hand-bumped in `index.html` — see
+  `D-0010`. Still no build step, no bundler.
 
 ## Next
 
@@ -60,10 +63,6 @@ again.
   HTTP concern leaks past the router. Tolerated because the alternative today
   is a domain error type plus a translation layer in `routes.py`, and the app
   has exactly one front end.
-- `app/templates/index.html` hardcodes a cache-busting query string on the
-  stylesheet (`styles.css?v=...`). It has to be bumped by hand after a CSS
-  change. Tolerated because there is no build step to generate one, and adding
-  a build step to a zero-build app costs more than it saves.
 - `models.py` imports `app.youtube` inside two functions to break an import
   cycle. It works and it is deliberate, but it is the kind of thing a reader
   will "fix" without realising. Documented in ARCHITECTURE.md.
