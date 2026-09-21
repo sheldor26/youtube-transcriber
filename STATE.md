@@ -37,14 +37,20 @@ updated: 2026-09-21
   build if any `app/*.py` module exceeds 500 lines, the mechanical half of the
   guardrail `M-0003` asked for. Verified green on a real push, not just
   locally.
+- The yt-dlp surface is now only `app/youtube.py`. `routes.py`'s search and
+  `transcription.py`'s audio download used to construct `YoutubeDL` directly;
+  both now call `search_extract_info()` / `download_audio_url()` instead, and
+  neither file imports `yt_dlp` any more. This pushed `youtube.py` to 499
+  lines — 1 under the CI ceiling it just started enforcing.
 
 ## Next
 
 1. Decide what the Claude Academy import becomes in a public repository: it is
    currently a hardcoded host and catalog URL in `app/youtube.py`. Either
    generalise it to a configurable catalog source, or keep it and document why.
-2. Narrow the yt-dlp surface: `routes.py` and `transcription.py` both construct
-   `YoutubeDL` directly, which was supposed to be `youtube.py`'s job alone.
+2. `app/youtube.py` is 1 line under the 500-line CI ceiling. The next thing
+   that grows it forces a real split (or the ceiling itself becomes the
+   argument) — there is no slack left to add "just one more function" to it.
 
 ## Known rough edges
 
