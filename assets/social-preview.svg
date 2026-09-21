@@ -1,0 +1,25 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg-glow" cx="50%" cy="0%" r="90%">
+      <stop offset="0%" stop-color="#181d24" />
+      <stop offset="100%" stop-color="#0b0d10" />
+    </radialGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffbe5c" />
+      <stop offset="100%" stop-color="#e8a33d" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg-glow)" />
+
+  <!-- icon: play triangle becoming transcript lines -->
+  <g transform="translate(430, 210)">
+    <path d="M0 0 L0 176 L118 88 Z" fill="url(#accent)" stroke-linejoin="round" />
+    <rect x="142" y="24" width="88" height="18" rx="9" fill="#e8a33d" />
+    <rect x="142" y="79" width="64" height="18" rx="9" fill="#9aa4b1" />
+    <rect x="142" y="134" width="76" height="18" rx="9" fill="#6b7583" />
+  </g>
+
+  <text x="640" y="470" text-anchor="middle" font-family="SF Mono, ui-monospace, Menlo, Consolas, monospace" font-size="58" font-weight="700" fill="#e4e8ee">YouTube Transcriber</text>
+  <text x="640" y="512" text-anchor="middle" font-family="SF Mono, ui-monospace, Menlo, Consolas, monospace" font-size="24" letter-spacing="0.5" fill="#6b7583">local captions + offline whisper, no cloud upload</text>
+</svg>
