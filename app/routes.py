@@ -12,24 +12,16 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
+from app.claude_academy import fetch_claude_academy_webinars
 from app.config import ALLOWED_LANGUAGES, ALLOWED_MODELS, JOBS_DIR, library
 from app.content import build_editorial_material
+from app.discovery import enrich_search_videos, extract_channel_videos, search_video_matches, video_record
 from app.library import LibraryError
 from app.models import Batch, Job, batch_lock, batches, jobs, jobs_lock, persist_batch_state, public_batch, public_job
 from app.pipeline import batch_from_state, start_batch_worker, start_job_worker
 from app.templating import templates
 from app.utils import default_output_dir, destination_dir_for, form_checkbox_enabled, topic_output_dir
-from app.youtube import (
-    enrich_search_videos,
-    extract_channel_videos,
-    fetch_claude_academy_webinars,
-    is_youtube_host,
-    media_id,
-    parse_urls,
-    search_extract_info,
-    search_video_matches,
-    video_record,
-)
+from app.youtube import is_youtube_host, media_id, parse_urls, search_extract_info
 
 router = APIRouter()
 

@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
-from app import models, pipeline, youtube
+from app import claude_academy, discovery, models, pipeline, youtube
 
 
 VIDEO_ID = "dQw4w9WgXcQ"
@@ -39,7 +39,7 @@ class CoreBehaviourTests(unittest.TestCase):
                 {"title": "Upcoming webinar", "recording": None},
             ]
         }
-        webinars = youtube.parse_claude_academy_webinars(payload)
+        webinars = claude_academy.parse_claude_academy_webinars(payload)
         self.assertEqual([webinar["platform"] for webinar in webinars], ["Goldcast", "YouTube"])
         self.assertEqual([webinar["title"] for webinar in webinars], ["Goldcast webinar", "YouTube webinar"])
 
@@ -75,13 +75,13 @@ class CoreBehaviourTests(unittest.TestCase):
     def test_year_filter_means_calendar_year(self):
         now = datetime(2026, 1, 2, 12, 0)
         base = {"duration": 600, "is_short": False}
-        self.assertTrue(youtube.search_video_matches({**base, "upload_date": "20260101"}, "all", "any", "year", "all", now))
-        self.assertFalse(youtube.search_video_matches({**base, "upload_date": "20251231"}, "all", "any", "year", "all", now))
+        self.assertTrue(discovery.search_video_matches({**base, "upload_date": "20260101"}, "all", "any", "year", "all", now))
+        self.assertFalse(discovery.search_video_matches({**base, "upload_date": "20251231"}, "all", "any", "year", "all", now))
 
     def test_short_reviews_are_not_classified_as_shorts_by_duration_or_title(self):
         review = {"duration": 120, "title": "Review completa, no shorts", "is_short": False}
-        self.assertTrue(youtube.search_video_matches(review, "videos", "any", "any", "all"))
-        self.assertFalse(youtube.search_video_matches(review, "shorts", "any", "any", "all"))
+        self.assertTrue(discovery.search_video_matches(review, "videos", "any", "any", "all"))
+        self.assertFalse(discovery.search_video_matches(review, "shorts", "any", "any", "all"))
 
     def test_conflicting_negations_and_numbers_are_not_deduplicated(self):
         from app.content import sentences_are_duplicate
@@ -111,8 +111,8 @@ class CoreBehaviourTests(unittest.TestCase):
                 return {"title": "Primero enriquecido", "duration": 600}
             return {"title": "Segundo enriquecido", "duration": 600}
 
-        with patch.object(youtube, "fetch_video_metadata_with_timeout", side_effect=fake_metadata):
-            enriched = youtube.enrich_search_videos(videos)
+        with patch.object(discovery, "fetch_video_metadata_with_timeout", side_effect=fake_metadata):
+            enriched = discovery.enrich_search_videos(videos)
 
         self.assertEqual([video["id"] for video in enriched], ["first", "second"])
         self.assertEqual([video["title"] for video in enriched], ["Primero enriquecido", "Segundo enriquecido"])
@@ -128,8 +128,8 @@ class CoreBehaviourTests(unittest.TestCase):
             calls.append(url)
             return {"title": url.rsplit("/", 1)[-1], "duration": 600}
 
-        with patch.object(youtube, "fetch_video_metadata_with_timeout", side_effect=fake_metadata):
-            enriched, stats = youtube.enrich_search_videos(
+        with patch.object(discovery, "fetch_video_metadata_with_timeout", side_effect=fake_metadata):
+            enriched, stats = discovery.enrich_search_videos(
                 videos,
                 candidate_limit=2,
                 time_budget_seconds=1,
@@ -153,8 +153,8 @@ class CoreBehaviourTests(unittest.TestCase):
             return {"title": "Completo", "duration": 600}
 
         started = time.monotonic()
-        with patch.object(youtube, "fetch_video_metadata_with_timeout", side_effect=slow_metadata):
-            _, stats = youtube.enrich_search_videos(
+        with patch.object(discovery, "fetch_video_metadata_with_timeout", side_effect=slow_metadata):
+            _, stats = discovery.enrich_search_videos(
                 videos,
                 candidate_limit=4,
                 time_budget_seconds=0.01,

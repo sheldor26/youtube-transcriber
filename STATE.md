@@ -37,25 +37,26 @@ updated: 2026-09-21
   build if any `app/*.py` module exceeds 500 lines, the mechanical half of the
   guardrail `M-0003` asked for. Verified green on a real push, not just
   locally.
-- The yt-dlp surface is now only `app/youtube.py`. `routes.py`'s search and
-  `transcription.py`'s audio download used to construct `YoutubeDL` directly;
-  both now call `search_extract_info()` / `download_audio_url()` instead, and
-  neither file imports `yt_dlp` any more.
+- The yt-dlp surface is now `youtube.py` (one video), `discovery.py` (many
+  videos: search, channel listing, metadata enrichment) and
+  `claude_academy.py` (the webinar catalog) — split by responsibility ahead
+  of the CI ceiling, not after hitting it. `routes.py` and `transcription.py`
+  still construct no `YoutubeDL` of their own; they call into these three.
+  See `D-0009`.
 - The Claude Academy host and catalog URL stay hardcoded module constants in
-  `app/youtube.py`, not configurable — a one-line comment there points at
-  `D-0008`, so the reasoning survives the next reader without them having to
-  find the logbook first.
+  `app/claude_academy.py`, not configurable — a one-line comment there points
+  at `D-0008`, so the reasoning survives the next reader without them having
+  to find the logbook first.
 
 ## Next
 
-1. `app/youtube.py` is at exactly the 500-line CI ceiling — zero lines of
-   slack. Adding the D-0008 comment is what used the last line. The next
-   change to this file has to either remove something or split it; there is
-   no room left to grow it in place.
+Nothing queued. `app/youtube.py` (224 lines), `app/discovery.py` (249) and
+`app/claude_academy.py` (48) all have headroom under the 500-line CI ceiling
+again.
 
 ## Known rough edges
 
-- `pipeline.py` and `youtube.py` both raise `fastapi.HTTPException`, so the
+- `pipeline.py` and `discovery.py` both raise `fastapi.HTTPException`, so the
   HTTP concern leaks past the router. Tolerated because the alternative today
   is a domain error type plus a translation layer in `routes.py`, and the app
   has exactly one front end.

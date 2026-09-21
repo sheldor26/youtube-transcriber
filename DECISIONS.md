@@ -9,6 +9,38 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0009
+date: 2026-09-21
+tags: [structure, architecture]
+-->
+### Split youtube.py into youtube/discovery/claude_academy by responsibility
+
+**Context.** `app/youtube.py` had reached the 500-line CI ceiling from M-0003 with zero
+lines of slack, right after the previous session narrowed the yt-dlp surface
+into it. Three responsibilities lived in it at once: one-video operations
+(identify, fetch info, captions, audio download), many-video listing/search/
+enrichment, and the unrelated Claude Academy catalog fetch.
+
+**Decision.** Split preventively, before the ceiling forced an argument mid-feature, into
+`discovery.py` (many videos) and `claude_academy.py` (the catalog), keeping
+`youtube.py` as the one-video core. `goldcast_webinar_id()` stayed in
+`youtube.py` rather than moving to `claude_academy.py` with the rest of the
+Goldcast code: `claude_academy.py` already needs `media_id()`, which calls
+`goldcast_webinar_id()`, so moving it too would have made `youtube.py` and
+`claude_academy.py` import each other. `discovery.py` importing
+`ydl_flat_options` from `youtube.py`, and not the reverse, was the same
+one-way-dependency choice.
+
+**Consequences.** `youtube.py` dropped to 224 lines, discovery.py to 249, claude_academy.py to
+48 — all with real headroom under the ceiling again. Verified as a pure move:
+an `ast` symbol-table comparison confirmed all 26 top-level functions landed
+in exactly one of the three files, all 22 tests pass, and a live run of
+search, channel extraction, the Claude Academy import, and a full
+caption-less transcription all completed normally. The cost is one more
+import to trace for a reader following how a URL becomes a transcript:
+`routes.py` now pulls from three modules instead of one.
+
+<!-- bitacora:entry
 id: D-0008
 date: 2026-09-21
 tags: [architecture, security]
