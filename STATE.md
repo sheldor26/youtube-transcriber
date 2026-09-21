@@ -1,6 +1,6 @@
 # State
 
-updated: 2026-09-20
+updated: 2026-09-21
 
 > A snapshot of where this project is right now — the file a new session reads
 > first. It answers "what exists, what is half-done, what is next".
@@ -26,20 +26,24 @@ updated: 2026-09-20
 - `app/main.py` reduced from 2,101 lines to 11 by splitting the application
   into modules by responsibility — see [ARCHITECTURE.md](ARCHITECTURE.md).
 - Public on GitHub with a README, logo and real screenshots.
-
-## In flight
-
-- This logbook. It was installed today, after the refactor and the redesign
-  were already committed, so `MISTAKES.md` and `LEARNINGS.md` start from the
-  things that are still true rather than from the full history.
+- This logbook (`CLAUDE.md`, `STATE.md`, `MISTAKES.md`, `LEARNINGS.md`,
+  `DECISIONS.md`, the `.bitacora/` CLI, and the session-start/-end hooks that
+  invoke it). Seeded from the work already done, so it starts from the things
+  that are still true rather than from the full history.
+- A GitHub social-preview image at `assets/social-preview.png` (1280x640,
+  recomposed for that aspect ratio rather than stretched from the README
+  banner — see `D-0007`).
 
 ## Next
 
-1. Decide what the Claude Academy import becomes in a public repository: it is
+1. Upload `assets/social-preview.png` in the repo's Settings > General >
+   Social preview. GitHub has no API for this field, so it cannot be done
+   from the command line — it needs a human click in the browser.
+2. Decide what the Claude Academy import becomes in a public repository: it is
    currently a hardcoded host and catalog URL in `app/youtube.py`. Either
    generalise it to a configurable catalog source, or keep it and document why.
-2. Add CI. There are 441 lines of tests and nothing runs them on push.
-3. Narrow the yt-dlp surface: `routes.py` and `transcription.py` both construct
+3. Add CI. There are 441 lines of tests and nothing runs them on push.
+4. Narrow the yt-dlp surface: `routes.py` and `transcription.py` both construct
    `YoutubeDL` directly, which was supposed to be `youtube.py`'s job alone.
 
 ## Known rough edges

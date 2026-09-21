@@ -9,6 +9,27 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0007
+date: 2026-09-21
+tags: [branding, assets]
+-->
+### Recompose the social preview image instead of stretching the README banner
+
+**Context.** GitHub reads a repo's link-unfurl image ("social preview") from a fixed 1280x640
+(2:1) slot, uploaded by hand in Settings — there is no API for it. The project
+already had a 900x200 (4.5:1) banner SVG for the README header, built from the
+same icon and palette.
+
+**Decision.** Built a second SVG at the exact 1280x640 canvas GitHub wants, with the icon and
+wordmark recentred for that shape, rather than feeding the 4.5:1 banner into an
+image tool and letting it stretch or letterbox to fit.
+
+**Consequences.** The preview reads correctly at the small size link cards actually render it at,
+with no cropped icon or squashed text. The cost is two SVGs to keep in sync
+with the palette instead of one: a change to the accent color or wordmark now
+has to be made in both `assets/logo.svg` and `assets/social-preview.svg`.
+
+<!-- bitacora:entry
 id: D-0006
 date: 2026-09-21
 tags: [architecture]
