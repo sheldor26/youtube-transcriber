@@ -81,16 +81,26 @@ updated: 2026-09-21
   11.7s); confirmed to produce byte-identical output before/after. See
   `D-0015` / `L-0004`. The comparison *count* is unchanged and still
   unbounded in the number of qualifying sentences.
+- Fixed a real gap in that first audio-cleanup fix: `delete_downloaded_media()`
+  only ran when a job succeeded. Any job that downloaded audio and then
+  failed for any other reason (a Whisper crash, an unwritable destination
+  folder, ...) kept the full audio file in `data/jobs/<id>/` forever, with
+  nothing to ever remove it. Now called from the `except` path too.
+  Confirmed live against the real server (a job pointed at a
+  permission-denied output folder) and with a new regression test,
+  `test_failed_job_still_deletes_downloaded_audio`, checked to fail without
+  the fix. See `M-0005`.
 
 ## Next
 
 Found during a review pass, not yet acted on:
 
-1. `data/jobs/<id>/` directories (a `job.json` plus a duplicate `.txt`) are
-   never removed, for every job ever run — the same leak the audio cleanup
-   fix earlier this session solved, but for everything except the audio.
-   Deliberately not touched by `D-0014`: deleting these would break the
-   disk-fallback that pruning the in-memory `jobs` dict now depends on.
+1. `data/jobs/<id>/` directories still keep a `job.json` and a duplicate
+   `.txt` forever after a job finishes — but with `M-0005` fixed, the actual
+   disk-cost driver (audio, gigabytes) is now cleaned up on every path. What
+   remains is small text files, not "gigabytes"; low urgency, and any
+   age-based deletion would need to outlive `prune_stale_jobs()`'s 1-hour
+   window without breaking the disk-fallback `D-0014` depends on.
 2. `models.py`'s `batches` dict still grows for the process's lifetime (see
    `D-0014`'s Consequences for why it wasn't pruned alongside `jobs`).
 

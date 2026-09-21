@@ -1,4 +1,5 @@
 import json
+import shutil
 import tempfile
 import threading
 import time
@@ -7,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
-from app import claude_academy, discovery, models, pipeline, youtube
+from app import claude_academy, config, discovery, models, pipeline, youtube
 
 
 VIDEO_ID = "dQw4w9WgXcQ"
@@ -53,6 +54,32 @@ class CoreBehaviourTests(unittest.TestCase):
         self.assertNotIn("stale-done", models.jobs)
         self.assertIn("stale-running", models.jobs)
         self.assertIn("recent-done", models.jobs)
+
+    def test_failed_job_still_deletes_downloaded_audio(self):
+        with tempfile.TemporaryDirectory() as output_dir:
+            job = models.Job(
+                id="audio-cleanup-on-error", url=f"https://www.youtube.com/watch?v={VIDEO_ID}",
+                language="auto", model_size="tiny", prefer_captions=False,
+                output_dir=output_dir, save_srt=False,
+            )
+            models.jobs[job.id] = job
+            job_dir = config.JOBS_DIR / job.id
+            self.addCleanup(models.jobs.pop, job.id, None)
+            self.addCleanup(shutil.rmtree, job_dir, True)
+
+            def fake_download_audio(_job, jdir):
+                jdir.mkdir(parents=True, exist_ok=True)
+                audio_path = jdir / "audio.m4a"
+                audio_path.write_bytes(b"not really audio")
+                return audio_path
+
+            with patch.object(pipeline, "extract_video_info", return_value={"title": "Test video", "duration": 10}), \
+                 patch.object(pipeline, "download_audio", side_effect=fake_download_audio), \
+                 patch.object(pipeline, "transcribe_with_whisper", side_effect=RuntimeError("faster-whisper blew up")):
+                pipeline.process_job(job.id)
+
+            self.assertEqual(job.status, "error")
+            self.assertFalse((job_dir / "audio.m4a").exists())
 
 
     def test_youtube_url_validation_requires_a_real_youtube_host(self):

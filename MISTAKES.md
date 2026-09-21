@@ -8,6 +8,40 @@
 > Add entries with: `node .bitacora/cli.mjs new mistake "Title" --tags area,failure-mode`
 
 <!-- bitacora:entry
+id: M-0005
+date: 2026-09-21
+tags: [disk, cleanup]
+severity: high
+-->
+### Failed jobs kept their downloaded audio forever
+
+**What happened.** The very first fix this session added `delete_downloaded_media(job_dir)` to
+`process_job()`'s success path, to stop downloaded audio (which can be
+gigabytes) from piling up after transcription. Found today, while reviewing
+`data/jobs/` cleanup more broadly: that call only ran on success. Any job
+that reached `download_audio()` and then failed for any other reason —
+Whisper crashing, the destination folder being unwritable, a disk error
+while writing output — left the full audio file sitting in
+`data/jobs/<id>/` with nothing to ever remove it. Confirmed live: a job
+pointed at a permission-denied output folder finished transcribing (so it
+had already downloaded and processed the audio), failed at the copy step,
+and its `data/jobs/<id>/` directory kept only `job.json` and the `.txt`
+output — but only after the fix; before it, `audio.m4a` was still there.
+
+**Root cause.** The original cleanup fix was verified against the success path only — the
+one the user had reported. Nothing tested or even considered the error path,
+so a real code path that downloads the same gigabytes-sized files was left
+with no cleanup at all, silently, for as long as the app has existed.
+
+**Guardrail.** `process_job()`'s `except Exception` handler now calls the same
+`delete_downloaded_media(job_dir)` the success path does, before marking the
+job `"error"`. Covered by a new test,
+`test_failed_job_still_deletes_downloaded_audio`, which mocks a
+successful audio download followed by a Whisper failure and asserts the
+audio file is gone afterward — confirmed to fail without the fix (checked
+with `git stash`) and pass with it.
+
+<!-- bitacora:entry
 id: M-0004
 date: 2026-09-21
 tags: [i18n, verification]

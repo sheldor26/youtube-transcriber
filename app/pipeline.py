@@ -141,6 +141,7 @@ def process_job(job_id: str) -> None:
             except Exception as exc:
                 update_job(job.id, message=f"Transcript is ready, but the index could not be updated: {exc}")
     except Exception as exc:
+        delete_downloaded_media(job_dir)
         update_job(job.id, status="error", error=str(exc), message="Could not complete the job", progress=100)
 
 
