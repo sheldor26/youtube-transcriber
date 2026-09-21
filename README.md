@@ -1,6 +1,8 @@
 # YouTube Transcriber
 
-A local web app for saving public video transcripts as plain text. It uses existing captions when available and falls back to local Whisper transcription when needed.
+A local, self-hosted app that turns YouTube videos into text transcripts (TXT/SRT) — no cloud upload, no API keys, no per-minute pricing. It reuses existing YouTube captions/subtitles when available and falls back to local, offline speech-to-text with [faster-whisper](https://github.com/SYSTRAN/faster-whisper) when there are none.
+
+Useful for grabbing a searchable transcript or subtitle file from a tutorial, podcast, lecture, or webinar, transcribing an entire channel or topic in one batch, or building a text-based knowledge base from a set of videos — all running on your own machine.
 
 ## Features
 
@@ -31,7 +33,7 @@ Age-restricted, private, removed, or sign-in-only videos may not be available to
 ## Install
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/youtube-transcriber.git
+git clone https://github.com/sheldor26/youtube-transcriber.git
 cd youtube-transcriber
 python3 -m venv .venv
 source .venv/bin/activate
