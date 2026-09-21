@@ -32,7 +32,7 @@ class Job:
     skip_existing: bool = False
     status: str = "queued"
     progress: int = 0
-    message: str = "Esperando turno"
+    message: str = "Waiting to start"
     title: Optional[str] = None
     source: Optional[str] = None
     duration: Optional[float] = None
@@ -61,7 +61,7 @@ class Batch:
     summary_max_words: int = 3500
     status: str = "queued"
     progress: int = 0
-    message: str = "Esperando turno"
+    message: str = "Waiting to start"
     total: int = 0
     completed: int = 0
     skipped: int = 0

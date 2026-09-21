@@ -252,7 +252,7 @@ def process_batch(batch_id: str) -> None:
                 if summary_path:
                     update_batch(batch.id, consolidated_summary_path=str(summary_path))
         except Exception as exc:
-            update_batch(batch.id, error=f"No pude crear los resultados consolidados: {exc}")
+            update_batch(batch.id, error=f"Could not create the consolidated results: {exc}")
 
     has_incidents = bool(batch.failed or batch.error)
     final_status = "done_with_errors" if has_incidents else "done"

@@ -61,7 +61,7 @@ def unique_path(path: Path) -> Path:
         candidate = path.with_name(f"{path.stem} ({index}){path.suffix}")
         if not candidate.exists():
             return candidate
-    raise RuntimeError(f"No pude generar un nombre disponible para {path.name}.")
+    raise RuntimeError(f"Could not generate an available name for {path.name}.")
 
 
 def format_bytes(value: float | None) -> str:
