@@ -420,6 +420,9 @@ def get_batch(batch_id: str) -> JSONResponse:
     with batch_lock:
         batch = batches.get(batch_id)
         if not batch:
+            batch_file = JOBS_DIR / "batches" / f"{batch_id}.json"
+            if batch_file.exists():
+                return JSONResponse(json.loads(batch_file.read_text(encoding="utf-8")))
             raise HTTPException(status_code=404, detail="Batch not found.")
         data = public_batch(batch)
     return JSONResponse(data)

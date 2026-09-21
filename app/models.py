@@ -149,8 +149,35 @@ def persist_batch_state(batch: Batch) -> None:
     with batch_lock:
         snapshot = public_batch(batch)
     state_path = Path(snapshot["state_path"]) if snapshot.get("state_path") else destination_dir_for(snapshot["output_dir"]) / f"batch-state-{snapshot['id']}.json"
+    canonical_path = JOBS_DIR / "batches" / f"{snapshot['id']}.json"
+    payload = json.dumps(snapshot, ensure_ascii=False, indent=2)
     with state_write_lock:
-        atomic_write_text(state_path, json.dumps(snapshot, ensure_ascii=False, indent=2))
+        atomic_write_text(state_path, payload)
+        atomic_write_text(canonical_path, payload)
+
+
+BATCH_RETENTION_SECONDS = 3600
+TERMINAL_BATCH_STATUSES = {"done", "done_with_errors", "error", "cancelled"}
+
+
+def prune_stale_batches() -> None:
+    """Keep the `batches` dict from growing for the life of the process.
+
+    Mirrors prune_stale_jobs(): safe once a batch is both terminal and older
+    than the retention window. get_batch() in routes.py falls back to
+    JOBS_DIR/batches/<id>.json — the canonical copy persist_batch_state()
+    writes alongside the one under the user's chosen output_dir, which is
+    what makes that fallback possible without knowing output_dir in advance.
+    """
+    cutoff = time.time() - BATCH_RETENTION_SECONDS
+    with batch_lock:
+        stale_ids = [
+            batch_id
+            for batch_id, batch in batches.items()
+            if batch.status in TERMINAL_BATCH_STATUSES and batch.created_at < cutoff
+        ]
+        for batch_id in stale_ids:
+            del batches[batch_id]
 
 
 def append_csv_row(path: Path, fieldnames: List[str], row: Dict[str, Any]) -> None:

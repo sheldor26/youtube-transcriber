@@ -9,6 +9,42 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0016
+date: 2026-09-21
+tags: [architecture, memory]
+-->
+### Give batches a canonical disk copy so they can be pruned too
+
+**Context.** `D-0014` pruned `jobs` but explicitly left `batches` alone: `get_batch()` had
+no disk-fallback the way `get_job()` does, because a batch's state file
+lives at `<output_dir>/batch-state-<id>.json` — a path only known once the
+`Batch` object already exists, not derivable from the id alone the way
+`JOBS_DIR/<job_id>/job.json` is.
+
+**Decision.** Gave every batch a second, fixed-location copy: `persist_batch_state()` now
+writes the same snapshot to both the existing `<output_dir>` path (still
+needed for "Resume batch", which reads a path the user can find and paste)
+and `JOBS_DIR/batches/<id>.json`. `get_batch()` falls back to that canonical
+copy exactly like `get_job()` falls back to `JOBS_DIR/<id>/job.json`. With
+that in place, `prune_stale_batches()` mirrors `prune_stale_jobs()` exactly:
+evicts from the `batches` dict only when a batch is terminal
+(`done`/`done_with_errors`/`error`/`cancelled`) and older than
+`BATCH_RETENTION_SECONDS` (1 hour), called once per batch at the top of
+`process_batch()`.
+
+**Consequences.** `batches` now self-limits the same way `jobs` does, closing the second half
+of `D-0014`. The cost is a second write on every `persist_batch_state()`
+call and a second on-disk copy of every batch's state for as long as
+`data/jobs/batches/` isn't cleaned up (small JSON, not the gigabyte-scale
+audio `M-0005` was about). Verified the same way as `D-0014`: a unit test
+pins `prune_stale_batches()`'s age/status logic, another creates a batch
+through the real API, deletes it from `models.batches` to simulate a prune,
+and confirms `GET /api/batches/{id}` still returns it; and live against the
+real server — ran a batch to completion, restarted the process (which empties
+`batches` the same way pruning would), and confirmed the same endpoint still
+served the finished batch from `JOBS_DIR/batches/<id>.json`.
+
+<!-- bitacora:entry
 id: D-0015
 date: 2026-09-21
 tags: [performance, content]

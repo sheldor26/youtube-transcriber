@@ -1,4 +1,5 @@
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,7 +7,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app import main, models, pipeline, routes
+from app import config, main, models, pipeline, routes
 from app.library import LibraryStore
 
 
@@ -127,6 +128,26 @@ class ProjectsApiTests(unittest.TestCase):
 
         missing = self.client.post("/api/batches/unknown-batch/cancel")
         self.assertEqual(missing.status_code, 404)
+
+    def test_get_batch_falls_back_to_the_canonical_disk_copy_once_pruned(self):
+        with patch.object(routes, "start_batch_worker", return_value=True):
+            created = self.client.post(
+                "/api/batches",
+                data={
+                    "links_text": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "output_dir": str(self.transcripts),
+                },
+            )
+        batch_id = created.json()["id"]
+        self.addCleanup(shutil.rmtree, config.JOBS_DIR / "batches", True)
+
+        # Simulate prune_stale_batches() having evicted it from memory already.
+        del models.batches[batch_id]
+
+        response = self.client.get(f"/api/batches/{batch_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id"], batch_id)
 
     def test_single_video_topic_uses_a_subfolder(self):
         with patch.object(pipeline.threading, "Thread") as thread:

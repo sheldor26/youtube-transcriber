@@ -55,6 +55,33 @@ class CoreBehaviourTests(unittest.TestCase):
         self.assertIn("stale-running", models.jobs)
         self.assertIn("recent-done", models.jobs)
 
+    def test_prune_stale_batches_evicts_only_old_finished_batches(self):
+        long_ago = time.time() - models.BATCH_RETENTION_SECONDS - 60
+        recent = time.time()
+        stale_done = models.Batch(
+            id="stale-done", urls=[], language="auto", model_size="tiny",
+            prefer_captions=True, output_dir="/tmp", save_srt=False,
+            status="done", created_at=long_ago,
+        )
+        stale_running = models.Batch(
+            id="stale-running", urls=[], language="auto", model_size="tiny",
+            prefer_captions=True, output_dir="/tmp", save_srt=False,
+            status="running", created_at=long_ago,
+        )
+        recent_cancelled = models.Batch(
+            id="recent-cancelled", urls=[], language="auto", model_size="tiny",
+            prefer_captions=True, output_dir="/tmp", save_srt=False,
+            status="cancelled", created_at=recent,
+        )
+        models.batches.update({batch.id: batch for batch in (stale_done, stale_running, recent_cancelled)})
+        self.addCleanup(models.batches.clear)
+
+        models.prune_stale_batches()
+
+        self.assertNotIn("stale-done", models.batches)
+        self.assertIn("stale-running", models.batches)
+        self.assertIn("recent-cancelled", models.batches)
+
     def test_failed_job_still_deletes_downloaded_audio(self):
         with tempfile.TemporaryDirectory() as output_dir:
             job = models.Job(

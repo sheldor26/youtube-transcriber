@@ -24,6 +24,7 @@ from app.models import (
     jobs_lock,
     persist_batch_state,
     persist_job_snapshot,
+    prune_stale_batches,
     prune_stale_jobs,
     public_job,
     update_batch,
@@ -151,6 +152,7 @@ def start_job_worker(job_id: str) -> None:
 
 
 def process_batch(batch_id: str) -> None:
+    prune_stale_batches()
     with batch_lock:
         batch = batches[batch_id]
 

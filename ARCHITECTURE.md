@@ -49,9 +49,10 @@ One page, four views, no build step and no JavaScript framework.
 - **Transcripts** are the only real output. They are written into the output
   folder the user chose, one subfolder per topic, TXT by default and SRT on
   request. Nothing else in the project is precious.
-- **`data/jobs/<id>.json`** — one state file per batch, owned by `models.py`
-  and updated by `pipeline.py`. This is what makes a batch resumable: the
-  process can die and the next run reads the file back.
+- **`<output_dir>/batch-state-<id>.json`** — one state file per batch, in the
+  folder the user chose, owned by `models.py` and updated by `pipeline.py`.
+  This is what makes a batch resumable: the process can die and the next run
+  reads the file back, or the user can point "Resume batch" at it directly.
 - **`data/library.sqlite3`** — owned by `library.py`. An index of what has
   already been transcribed. Derived, not precious: deleting it costs a
   re-transcription, never a transcript.
@@ -59,11 +60,16 @@ One page, four views, no build step and no JavaScript framework.
   the transcription finishes.
 - All of `data/` is gitignored. A fresh clone starts with an empty library and
   no jobs, and that is the intended state.
-- The disk copy under `data/jobs/<id>/` outlives the in-memory `Job`: `models.
-  prune_stale_jobs()` evicts finished jobs from the `jobs` dict after an hour,
-  but never touches the directory, because `routes.py`'s `get_job()` and
-  `download()` read it directly whenever a job_id isn't in the dict. Deleting
-  that directory would break the very fallback pruning relies on.
+- The disk copy under `data/jobs/<id>/` outlives the in-memory `Job`, and
+  `data/jobs/batches/<id>.json` outlives the in-memory `Batch`: `models.
+  prune_stale_jobs()` / `prune_stale_batches()` evict finished entries from
+  their respective dicts after an hour, but never touch either location,
+  because `routes.py`'s `get_job()` / `download()` / `get_batch()` all read
+  straight from disk whenever an id isn't in memory. Deleting either location
+  would break the fallback pruning relies on. `data/jobs/batches/<id>.json`
+  is a second copy of the same snapshot as the `<output_dir>` one above — it
+  exists purely so a batch can be looked up by id alone, the way a job
+  already can.
 
 ## Boundaries
 

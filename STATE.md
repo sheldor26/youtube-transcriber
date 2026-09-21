@@ -71,9 +71,17 @@ updated: 2026-09-21
   `JOBS_DIR/<id>/job.json` from disk when a job isn't in the dict — verified
   by restarting the server (which empties the dict the same way pruning
   does) and confirming both endpoints still served a finished job correctly.
-  See `D-0014`. `batches` is not pruned — no disk-fallback path exists for
-  it the way `jobs` has one, and it grows far slower (one entry per batch,
-  not per video).
+  See `D-0014`.
+- `models.py`'s `batches` dict now prunes itself too: `persist_batch_state()`
+  writes a second, fixed-location copy to `data/jobs/batches/<id>.json` (in
+  addition to the existing one under the user's `output_dir`), which is what
+  lets `get_batch()` fall back to disk the way `get_job()` already could.
+  `prune_stale_batches()` mirrors `prune_stale_jobs()` exactly: evicts
+  terminal batches older than an hour, called once per batch in
+  `process_batch()`. Verified the same way as `jobs`: a batch created
+  through the real API, evicted from memory to simulate a prune, still
+  reachable via `GET /api/batches/{id}`; and a real server restart after a
+  batch finished, confirming the same over HTTP. See `D-0016`.
 - `content.py`'s sentence-deduplication (`build_consolidated_summary()` and
   `build_editorial_material()`, both O(n²) by nature) now tokenizes each
   sentence once via `duplicate_signature()` instead of on every pairwise
@@ -95,14 +103,13 @@ updated: 2026-09-21
 
 Found during a review pass, not yet acted on:
 
-1. `data/jobs/<id>/` directories still keep a `job.json` and a duplicate
-   `.txt` forever after a job finishes — but with `M-0005` fixed, the actual
-   disk-cost driver (audio, gigabytes) is now cleaned up on every path. What
-   remains is small text files, not "gigabytes"; low urgency, and any
-   age-based deletion would need to outlive `prune_stale_jobs()`'s 1-hour
-   window without breaking the disk-fallback `D-0014` depends on.
-2. `models.py`'s `batches` dict still grows for the process's lifetime (see
-   `D-0014`'s Consequences for why it wasn't pruned alongside `jobs`).
+1. `data/jobs/<id>/` directories and `data/jobs/batches/<id>.json` files are
+   never removed from disk, only pruned from memory — but with `M-0005`
+   fixed, the actual disk-cost driver (audio, gigabytes) is cleaned up on
+   every path. What remains is small text/JSON files, not "gigabytes"; low
+   urgency, and any age-based deletion would need to outlive the 1-hour
+   in-memory retention window without breaking the disk-fallbacks `D-0014` /
+   `D-0016` depend on.
 
 ## Known rough edges
 
