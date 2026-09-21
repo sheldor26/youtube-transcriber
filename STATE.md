@@ -40,17 +40,18 @@ updated: 2026-09-21
 - The yt-dlp surface is now only `app/youtube.py`. `routes.py`'s search and
   `transcription.py`'s audio download used to construct `YoutubeDL` directly;
   both now call `search_extract_info()` / `download_audio_url()` instead, and
-  neither file imports `yt_dlp` any more. This pushed `youtube.py` to 499
-  lines — 1 under the CI ceiling it just started enforcing.
+  neither file imports `yt_dlp` any more.
+- The Claude Academy host and catalog URL stay hardcoded module constants in
+  `app/youtube.py`, not configurable — a one-line comment there points at
+  `D-0008`, so the reasoning survives the next reader without them having to
+  find the logbook first.
 
 ## Next
 
-1. Decide what the Claude Academy import becomes in a public repository: it is
-   currently a hardcoded host and catalog URL in `app/youtube.py`. Either
-   generalise it to a configurable catalog source, or keep it and document why.
-2. `app/youtube.py` is 1 line under the 500-line CI ceiling. The next thing
-   that grows it forces a real split (or the ceiling itself becomes the
-   argument) — there is no slack left to add "just one more function" to it.
+1. `app/youtube.py` is at exactly the 500-line CI ceiling — zero lines of
+   slack. Adding the D-0008 comment is what used the last line. The next
+   change to this file has to either remove something or split it; there is
+   no room left to grow it in place.
 
 ## Known rough edges
 

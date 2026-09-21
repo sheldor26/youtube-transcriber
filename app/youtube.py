@@ -21,6 +21,7 @@ from yt_dlp import YoutubeDL
 from app.models import update_job
 
 YOUTUBE_SHORT_HOSTS = {"youtu.be", "www.youtu.be"}
+# Hardcoded on purpose: this is a fixed allowlist, not a setting. See D-0006 / D-0008.
 GOLDCAST_ON_DEMAND_HOST = "anthropic.ondemand.goldcast.io"
 CLAUDE_ACADEMY_WEBINARS_URL = "https://academy.claude.com/assets/data/webinars-latest.json"
 METADATA_WORKERS = 8

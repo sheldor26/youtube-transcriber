@@ -9,6 +9,29 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0008
+date: 2026-09-21
+tags: [architecture, security]
+-->
+### Keep the Claude Academy host and catalog URL hardcoded, not configurable
+
+**Context.** `GOLDCAST_ON_DEMAND_HOST` and `CLAUDE_ACADEMY_WEBINARS_URL` in `app/youtube.py`
+are literal strings. STATE.md carried this as an open question: generalise
+them into a configurable catalog source, or keep them and say why. D-0006
+had already decided *which* host to accept; this is the separate question of
+whether that choice should live in code or in a setting.
+
+**Decision.** Left them as hardcoded module constants, with a code comment pointing at this
+entry. No environment variable, no config file entry.
+
+**Consequences.** The choice from D-0006 stays an allowlist, not a preference: nobody running
+this app can point it at a different Goldcast tenant, or any other host,
+without editing and redeploying the source. That is the entire point — a
+configurable "catalog source" is a paywall-bypass feature with extra steps.
+The cost is that if Anthropic ever moves the catalog to a new host, updating
+it means a code change and a release, not a settings change.
+
+<!-- bitacora:entry
 id: D-0007
 date: 2026-09-21
 tags: [branding, assets]
