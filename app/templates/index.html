@@ -236,6 +236,7 @@
               </form>
               <div class="progress"><div id="batchProgressBar"></div></div>
               <p id="batchMessage" class="source">No active batch.</p>
+              <button id="cancelBatch" type="button" class="secondary" hidden>Cancel batch</button>
               <pre id="batchResults" hidden></pre>
               <details class="collapsible">
                 <summary>Resume a previous batch</summary>
@@ -287,7 +288,9 @@
       const batchStatusText = document.querySelector("#batchStatusText");
       const batchProgressBar = document.querySelector("#batchProgressBar");
       const batchMessage = document.querySelector("#batchMessage");
+      const cancelBatch = document.querySelector("#cancelBatch");
       const batchResults = document.querySelector("#batchResults");
+      let activeBatchId = null;
       const resumeBatchForm = document.querySelector("#resumeBatchForm");
       const loadClaudeAcademy = document.querySelector("#loadClaudeAcademy");
       const claudeAcademyStatus = document.querySelector("#claudeAcademyStatus");
@@ -336,8 +339,12 @@
       }
 
       function renderBatch(batch) {
+        activeBatchId = batch.id;
         batchStatusText.textContent = batch.status;
         batchProgressBar.style.width = `${batch.progress || 0}%`;
+        cancelBatch.hidden = !["queued", "running"].includes(batch.status);
+        cancelBatch.disabled = false;
+        cancelBatch.textContent = "Cancel batch";
         const summary = `${batch.completed || 0} complete, ${batch.skipped || 0} skipped, ${batch.failed || 0} failed, ${batch.total || 0} total`;
         const paths = [
           batch.output_dir ? `Folder: ${batch.output_dir}` : "",
@@ -516,6 +523,20 @@
         } catch (error) {
           batchStatusText.textContent = "error";
           batchMessage.textContent = error.message;
+        }
+      });
+
+      cancelBatch.addEventListener("click", async () => {
+        if (!activeBatchId) return;
+        cancelBatch.disabled = true;
+        cancelBatch.textContent = "Cancelling...";
+        try {
+          const batch = await requestJson(`/api/batches/${activeBatchId}/cancel`, { method: "POST" });
+          renderBatch(batch);
+        } catch (error) {
+          cancelBatch.disabled = false;
+          cancelBatch.textContent = "Cancel batch";
+          window.alert(error.message);
         }
       });
 

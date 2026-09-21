@@ -425,6 +425,20 @@ def get_batch(batch_id: str) -> JSONResponse:
     return JSONResponse(data)
 
 
+@router.post("/api/batches/{batch_id}/cancel")
+def cancel_batch(batch_id: str) -> JSONResponse:
+    with batch_lock:
+        batch = batches.get(batch_id)
+        if not batch:
+            raise HTTPException(status_code=404, detail="Batch not found.")
+        if batch.status not in {"queued", "running"}:
+            raise HTTPException(status_code=409, detail="This batch is not running.")
+        batch.status = "cancelled"
+        batch.message = "Cancelling after the current video finishes"
+    persist_batch_state(batch)
+    return JSONResponse(public_batch(batch))
+
+
 @router.get("/api/jobs/{job_id}")
 def get_job(job_id: str) -> JSONResponse:
     with jobs_lock:

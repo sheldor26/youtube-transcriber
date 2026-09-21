@@ -106,6 +106,28 @@ class ProjectsApiTests(unittest.TestCase):
         self.assertEqual(project_batch.status_code, 200)
         self.assertEqual(project_batch.json()["output_dir"], project["output_dir"])
 
+    def test_cancel_batch_flags_a_running_batch_and_rejects_the_rest(self):
+        with patch.object(routes, "start_batch_worker", return_value=True):
+            created = self.client.post(
+                "/api/batches",
+                data={
+                    "links_text": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "output_dir": str(self.transcripts),
+                },
+            )
+        self.assertEqual(created.status_code, 200)
+        batch_id = created.json()["id"]
+
+        cancelled = self.client.post(f"/api/batches/{batch_id}/cancel")
+        self.assertEqual(cancelled.status_code, 200)
+        self.assertEqual(cancelled.json()["status"], "cancelled")
+
+        again = self.client.post(f"/api/batches/{batch_id}/cancel")
+        self.assertEqual(again.status_code, 409)
+
+        missing = self.client.post("/api/batches/unknown-batch/cancel")
+        self.assertEqual(missing.status_code, 404)
+
     def test_single_video_topic_uses_a_subfolder(self):
         with patch.object(pipeline.threading, "Thread") as thread:
             response = self.client.post(

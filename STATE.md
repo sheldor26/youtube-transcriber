@@ -33,7 +33,7 @@ updated: 2026-09-21
 - A GitHub social-preview image at `assets/social-preview.png` (1280x640,
   recomposed for that aspect ratio rather than stretched from the README
   banner — see `D-0007`), uploaded in the repo's Settings.
-- CI (`.github/workflows/ci.yml`): runs the test suite (23 tests) and fails
+- CI (`.github/workflows/ci.yml`): runs the test suite (24 tests) and fails
   the build if any `app/*.py` module exceeds 500 lines (`M-0003`) or if any
   file outside `content.py` contains an accented Spanish character (`M-0004`,
   partial coverage — see that entry). Verified green on a real push, not just
@@ -61,22 +61,21 @@ updated: 2026-09-21
   — it ran on the pre-existing 3.9.6 all session until now. See `D-0012`.
 - Four leftover Spanish user-facing strings (the `Job`/`Batch` default
   `message`, two error messages) translated to English. See `M-0004`.
+- `POST /api/batches/{id}/cancel` and a "Cancel batch" button in the Batch
+  view. Finishes the cancel feature `pipeline.py`'s loop already had a check
+  for but nothing ever triggered — see `D-0013`. Cancelling stops the batch
+  before its next video, not mid-transcription.
 
 ## Next
 
 Found during a review pass, not yet acted on:
 
-1. `pipeline.py`'s batch loop checks `if current_batch.status == "cancelled":
-   return`, but nothing anywhere ever sets a batch to `"cancelled"` — no
-   route, no button. Either dead code to remove, or a half-built cancel
-   feature worth finishing (a batch can run for hours per `D-0004`, with no
-   way to stop one short of killing the process).
-2. `content.py`'s `build_consolidated_summary()` / `build_knowledge_base()`
+1. `content.py`'s `build_consolidated_summary()` / `build_knowledge_base()`
    compare every candidate sentence against every already-selected one with
    `difflib.SequenceMatcher.ratio()`, an O(n²) cost with no ceiling. Fine for
    a handful of videos; a batch of hundreds could make this the slowest part
    of the whole run.
-3. `models.py`'s `jobs` and `batches` module-level dicts are never pruned —
+2. `models.py`'s `jobs` and `batches` module-level dicts are never pruned —
    every job and batch created since the process started stays in memory for
    its lifetime. Related: `data/jobs/<id>/` directories (a `job.json` plus a
    duplicate `.txt`) are never removed either, for the same reason the audio

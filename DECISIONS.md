@@ -9,6 +9,37 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0013
+date: 2026-09-21
+tags: [architecture, ui]
+-->
+### Add a cancel-batch endpoint that only sets a status flag
+
+**Context.** Found during a review pass: `pipeline.py`'s batch loop already checked
+`if current_batch.status == "cancelled": return` between videos, but nothing
+anywhere ever set a batch to `"cancelled"` — dead code for a feature that
+was never finished. A batch can run for hours (`D-0004`), with no way to
+stop one short of killing the whole process.
+
+**Decision.** Added `POST /api/batches/{id}/cancel`, which does nothing but flip
+`batch.status` to `"cancelled"` (404 if the batch doesn't exist, 409 if it
+isn't queued/running) and persist that. No change to `pipeline.py`: the
+existing check was already the right mechanism, just never wired to
+anything. A "Cancel batch" button was added to the Batch view, shown only
+while `status` is `queued`/`running`.
+
+**Consequences.** Cancelling stops the batch before its *next* video, not mid-transcription —
+a video already running when cancel is clicked finishes normally and counts
+toward the results. That is a deliberate limit, not an oversight: the app
+runs work on plain threads with no cancellation primitive (`D-0004`), and
+killing a thread mid-Whisper-run from Python is not something to reach for.
+Verified live end-to-end, not just via the endpoint: submitted a real batch
+from the browser UI, clicked "Cancel batch" while video 1 of 3 was
+transcribing, and confirmed video 1 finished, video 2 never started, the
+button hid itself, and a cancel on an already-finished or unknown batch
+returns 409/404.
+
+<!-- bitacora:entry
 id: D-0012
 date: 2026-09-21
 tags: [environment, verification]
