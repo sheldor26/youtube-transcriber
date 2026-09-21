@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "logs": {
+    "MISTAKES.md":  { "prefix": "M", "maxLines": 400, "keepEntries": 20 },
+    "LEARNINGS.md": { "prefix": "L", "maxLines": 400, "keepEntries": 20 },
+    "DECISIONS.md": { "prefix": "D", "maxLines": 600, "keepEntries": 40 }
+  },
+  "state": { "file": "STATE.md", "maxLines": 200, "maxAgeDays": 14 },
+  "required": ["CLAUDE.md", "ARCHITECTURE.md", "STATE.md", "MISTAKES.md", "LEARNINGS.md", "DECISIONS.md"],
+  "archiveDir": "docs/bitacora-archive"
+}
