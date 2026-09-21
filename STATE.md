@@ -32,18 +32,18 @@ updated: 2026-09-21
   that are still true rather than from the full history.
 - A GitHub social-preview image at `assets/social-preview.png` (1280x640,
   recomposed for that aspect ratio rather than stretched from the README
-  banner — see `D-0007`).
+  banner — see `D-0007`), uploaded in the repo's Settings.
+- CI (`.github/workflows/ci.yml`): runs the 22 existing tests and fails the
+  build if any `app/*.py` module exceeds 500 lines, the mechanical half of the
+  guardrail `M-0003` asked for. Verified green on a real push, not just
+  locally.
 
 ## Next
 
-1. Upload `assets/social-preview.png` in the repo's Settings > General >
-   Social preview. GitHub has no API for this field, so it cannot be done
-   from the command line — it needs a human click in the browser.
-2. Decide what the Claude Academy import becomes in a public repository: it is
+1. Decide what the Claude Academy import becomes in a public repository: it is
    currently a hardcoded host and catalog URL in `app/youtube.py`. Either
    generalise it to a configurable catalog source, or keep it and document why.
-3. Add CI. There are 441 lines of tests and nothing runs them on push.
-4. Narrow the yt-dlp surface: `routes.py` and `transcription.py` both construct
+2. Narrow the yt-dlp surface: `routes.py` and `transcription.py` both construct
    `YoutubeDL` directly, which was supposed to be `youtube.py`'s job alone.
 
 ## Known rough edges
@@ -62,3 +62,8 @@ updated: 2026-09-21
 - The library database and job state live in `data/`, which is gitignored in
   full. A contributor cannot reproduce a reported bug from a state file
   without being sent one.
+- The README asks for Python 3.10+; the environment this project has actually
+  been run and tested in all session is 3.9.6. Nothing has broken, likely
+  because every module starts with `from __future__ import annotations`. CI
+  targets 3.10, matching what the README promises, not what was locally
+  verified — untested until CI actually runs against a contribution.
