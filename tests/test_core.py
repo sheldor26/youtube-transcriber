@@ -27,6 +27,33 @@ class CoreBehaviourTests(unittest.TestCase):
         self.assertEqual(job.message, "Waiting to start")
         self.assertEqual(batch.message, "Waiting to start")
 
+    def test_prune_stale_jobs_evicts_only_old_finished_jobs(self):
+        long_ago = time.time() - models.JOB_RETENTION_SECONDS - 60
+        recent = time.time()
+        stale_done = models.Job(
+            id="stale-done", url="u", language="auto", model_size="tiny",
+            prefer_captions=True, output_dir="/tmp", save_srt=False,
+            status="done", created_at=long_ago,
+        )
+        stale_running = models.Job(
+            id="stale-running", url="u", language="auto", model_size="tiny",
+            prefer_captions=True, output_dir="/tmp", save_srt=False,
+            status="running", created_at=long_ago,
+        )
+        recent_done = models.Job(
+            id="recent-done", url="u", language="auto", model_size="tiny",
+            prefer_captions=True, output_dir="/tmp", save_srt=False,
+            status="done", created_at=recent,
+        )
+        models.jobs.update({job.id: job for job in (stale_done, stale_running, recent_done)})
+        self.addCleanup(models.jobs.clear)
+
+        models.prune_stale_jobs()
+
+        self.assertNotIn("stale-done", models.jobs)
+        self.assertIn("stale-running", models.jobs)
+        self.assertIn("recent-done", models.jobs)
+
 
     def test_youtube_url_validation_requires_a_real_youtube_host(self):
         self.assertEqual(youtube.youtube_video_id(f"https://www.youtube.com/watch?v={VIDEO_ID}"), VIDEO_ID)

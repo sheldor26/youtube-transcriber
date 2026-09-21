@@ -24,6 +24,7 @@ from app.models import (
     jobs_lock,
     persist_batch_state,
     persist_job_snapshot,
+    prune_stale_jobs,
     public_job,
     update_batch,
     update_job,
@@ -78,6 +79,7 @@ def find_existing_transcript(job: Job, basename: str, info: Dict[str, Any]) -> O
 
 
 def process_job(job_id: str) -> None:
+    prune_stale_jobs()
     with jobs_lock:
         job = jobs[job_id]
 

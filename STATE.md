@@ -65,6 +65,15 @@ updated: 2026-09-21
   view. Finishes the cancel feature `pipeline.py`'s loop already had a check
   for but nothing ever triggered — see `D-0013`. Cancelling stops the batch
   before its next video, not mid-transcription.
+- `models.py`'s `jobs` dict now prunes itself: `prune_stale_jobs()`, called
+  once per job in `process_job()`, evicts entries that are both terminal and
+  older than an hour. Safe because `get_job()` / `download()` already read
+  `JOBS_DIR/<id>/job.json` from disk when a job isn't in the dict — verified
+  by restarting the server (which empties the dict the same way pruning
+  does) and confirming both endpoints still served a finished job correctly.
+  See `D-0014`. `batches` is not pruned — no disk-fallback path exists for
+  it the way `jobs` has one, and it grows far slower (one entry per batch,
+  not per video).
 
 ## Next
 
@@ -75,12 +84,13 @@ Found during a review pass, not yet acted on:
    `difflib.SequenceMatcher.ratio()`, an O(n²) cost with no ceiling. Fine for
    a handful of videos; a batch of hundreds could make this the slowest part
    of the whole run.
-2. `models.py`'s `jobs` and `batches` module-level dicts are never pruned —
-   every job and batch created since the process started stays in memory for
-   its lifetime. Related: `data/jobs/<id>/` directories (a `job.json` plus a
-   duplicate `.txt`) are never removed either, for the same reason the audio
-   cleanup fix earlier this session existed — this is the same leak, for
-   everything except the audio.
+2. `data/jobs/<id>/` directories (a `job.json` plus a duplicate `.txt`) are
+   never removed, for every job ever run — the same leak the audio cleanup
+   fix earlier this session solved, but for everything except the audio.
+   Deliberately not touched by `D-0014`: deleting these would break the
+   disk-fallback that pruning the in-memory `jobs` dict now depends on.
+3. `models.py`'s `batches` dict still grows for the process's lifetime (see
+   `D-0014`'s Consequences for why it wasn't pruned alongside `jobs`).
 
 ## Known rough edges
 
@@ -90,3 +100,7 @@ Found during a review pass, not yet acted on:
 - The library database and job state live in `data/`, which is gitignored in
   full. A contributor cannot reproduce a reported bug from a state file
   without being sent one.
+- `routes.py`'s `download()` raises three Spanish-language `HTTPException`
+  details ("Formato no disponible.", "Archivo no disponible." x2) — the same
+  class of bug as `M-0004`, found while verifying this fix, but with no
+  accent, so the CI check added for `M-0004` does not catch it either.

@@ -96,6 +96,30 @@ def update_job(job_id: str, **changes: Any) -> None:
     persist_job_snapshot(job_id, snapshot)
 
 
+JOB_RETENTION_SECONDS = 3600
+TERMINAL_JOB_STATUSES = {"done", "error", "skipped"}
+
+
+def prune_stale_jobs() -> None:
+    """Keep the `jobs` dict from growing for the life of the process.
+
+    Safe to evict a finished job: its status and paths already reached disk
+    via persist_job_snapshot, and get_job()/download() in routes.py both fall
+    back to reading job.json from JOBS_DIR when a job_id is missing here. The
+    retention window exists so a job just read by process_batch (which looks
+    it up right after it finishes) is never the one being pruned.
+    """
+    cutoff = time.time() - JOB_RETENTION_SECONDS
+    with jobs_lock:
+        stale_ids = [
+            job_id
+            for job_id, job in jobs.items()
+            if job.status in TERMINAL_JOB_STATUSES and job.created_at < cutoff
+        ]
+        for job_id in stale_ids:
+            del jobs[job_id]
+
+
 def public_job(job: Job) -> Dict[str, Any]:
     data = asdict(job)
     data["created_at"] = int(job.created_at)

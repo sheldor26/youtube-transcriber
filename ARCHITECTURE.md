@@ -59,6 +59,11 @@ One page, four views, no build step and no JavaScript framework.
   the transcription finishes.
 - All of `data/` is gitignored. A fresh clone starts with an empty library and
   no jobs, and that is the intended state.
+- The disk copy under `data/jobs/<id>/` outlives the in-memory `Job`: `models.
+  prune_stale_jobs()` evicts finished jobs from the `jobs` dict after an hour,
+  but never touches the directory, because `routes.py`'s `get_job()` and
+  `download()` read it directly whenever a job_id isn't in the dict. Deleting
+  that directory would break the very fallback pruning relies on.
 
 ## Boundaries
 

@@ -9,6 +9,42 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0014
+date: 2026-09-21
+tags: [architecture, memory]
+-->
+### Prune the jobs dict by age, scope batches out for now
+
+**Context.** Found during a review pass: `models.py`'s `jobs` and `batches` dicts are
+never pruned, growing for the life of the process. `jobs` is the bigger
+driver — one batch creates a `Job` entry per video. The obvious fix, evicting
+a job the moment it reaches a terminal status, breaks `process_batch()`:
+right after `process_job(job_id)` returns, it reads `jobs[job_id]` to build
+the batch's result row, so evicting inside that same call would raise
+`KeyError` on the very next line.
+
+**Decision.** `prune_stale_jobs()` in `models.py` only evicts jobs that are both terminal
+(`done`/`error`/`skipped`) *and* older than `JOB_RETENTION_SECONDS` (1 hour,
+measured from `created_at`). Called once per job, at the top of
+`process_job()` — not on every `update_job()` progress tick, and not on a
+timer. The 1-hour floor is what makes the `process_batch()` read safe: a job
+that just finished is never old enough to be pruned. `batches` was left
+alone: `get_batch()` has no disk-fallback path the way `get_job()` and
+`download()` do, and building one isn't as simple, because a batch's state
+file lives under the user's chosen `output_dir`, not a fixed location
+derivable from the batch id the way `JOBS_DIR/<job_id>/` is.
+
+**Consequences.** The `jobs` dict now self-limits to roughly an hour of activity instead of
+growing for the process's entire lifetime, with no new thread, timer, or
+broker (`D-0004`). It relies on `get_job()` and `download()`'s existing
+disk-fallback reads, which were already there for a different reason
+(surviving a server restart) — confirmed by restarting the server after a
+job finished (which empties `jobs` exactly like pruning would) and checking
+that both endpoints still served the right data straight from
+`JOBS_DIR/<id>/job.json` and the copied `.txt`. `batches` growing unbounded
+remains open, now with a clearer reason why it's harder than `jobs`.
+
+<!-- bitacora:entry
 id: D-0013
 date: 2026-09-21
 tags: [architecture, ui]
