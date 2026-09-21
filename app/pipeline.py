@@ -7,8 +7,6 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException
-
 from app.config import JOBS_DIR, library
 from app.content import build_consolidated_summary, build_knowledge_base
 from app.library import LibraryError
@@ -289,13 +287,13 @@ def start_batch_worker(batch_id: str) -> bool:
 def batch_from_state(state_path: str) -> Batch:
     path = Path(os.path.expandvars(os.path.expanduser(state_path))).resolve()
     if not path.exists():
-        raise HTTPException(status_code=404, detail="The batch state file was not found.")
+        raise FileNotFoundError("The batch state file was not found.")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         batch_fields = {field.name for field in Batch.__dataclass_fields__.values()}
         batch = Batch(**{key: value for key, value in data.items() if key in batch_fields})
     except (OSError, json.JSONDecodeError, TypeError) as exc:
-        raise HTTPException(status_code=400, detail=f"The batch state is not valid: {exc}") from exc
+        raise ValueError(f"The batch state is not valid: {exc}") from exc
     batch.state_path = str(path)
     retryable_results = [result for result in batch.results if result.get("status") in {"done", "skipped"}]
     batch.results = retryable_results

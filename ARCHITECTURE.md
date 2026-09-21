@@ -64,6 +64,10 @@ One page, four views, no build step and no JavaScript framework.
 
 - `main.py` knows about FastAPI and about `routes`. It does not know what the
   app does.
+- `routes.py` is the only module that raises `fastapi.HTTPException`. Every
+  other module raises plain Python exceptions (`ValueError`,
+  `FileNotFoundError`, ...); `routes.py` catches and translates them to a
+  status code at the edge. See `DECISIONS.md` D-0011.
 - `transcription.py` is the only module that imports `faster-whisper`, and it
   imports it **inside the function that needs it**, so the app starts — and
   serves caption-only work — without loading a model or even having one.

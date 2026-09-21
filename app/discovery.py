@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 
 import re
 
-from fastapi import HTTPException
 from yt_dlp import YoutubeDL
 
 from app.youtube import ydl_flat_options
@@ -92,7 +91,7 @@ def extract_channel_videos(channel_url: str, filter_type: str, limit: int) -> Li
     elif needs_full_metadata:
         selected = enrich_and_sort_videos(newest_first, filter_type, limit)
     else:
-        raise HTTPException(status_code=400, detail="Filtro no valido.")
+        raise ValueError(f"Unsupported channel filter: {filter_type!r}")
 
     return [{**video, "position": index + 1} for index, video in enumerate(selected)]
 

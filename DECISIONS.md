@@ -9,6 +9,38 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0011
+date: 2026-09-21
+tags: [architecture]
+-->
+### Translate plain exceptions to HTTPException at the routes.py edge
+
+**Context.** STATE.md carried a rough edge: `pipeline.py`'s `batch_from_state()` and
+`discovery.py`'s `extract_channel_videos()` both raised `fastapi.HTTPException`
+directly, so the HTTP concern leaked past the router. It was tolerated because
+the stated alternative — a domain error type plus a translation layer — looked
+like more machinery than the app's single front end justified.
+
+**Decision.** That framing overstated the cost. No new error type was needed: the two
+functions now raise plain `FileNotFoundError` / `ValueError`, and `routes.py`
+catches and translates them to the right status code at its two call sites.
+Separately, `extract_channel_videos()`'s `ValueError` for an unknown
+`filter_type` turned out to be reachable in practice — `routes.py` validated
+`language` and `model_size` against `config.py` allow-lists at the edge but
+never validated `filter_type` the same way — so `ALLOWED_CHANNEL_FILTERS` was
+added and checked in `extract_channel()`, matching the existing convention.
+
+**Consequences.** `pipeline.py` and `discovery.py` no longer import `fastapi` at all — an
+`import fastapi` in either now means a route's concern actually leaked in,
+not that it always did. The two error messages sent to the client changed
+text (now in English, matching the rest of the app's user-facing strings,
+where `discovery.py`'s was a Spanish leftover) and the invalid-filter case
+now fails before doing any work instead of after fetching the channel
+listing. Verified live: a missing resume-state path, an unparseable one, a
+valid one, and an invalid channel filter each still return the right status
+code, over HTTP, not just via the unit tests.
+
+<!-- bitacora:entry
 id: D-0010
 date: 2026-09-21
 tags: [ui, architecture]

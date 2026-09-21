@@ -50,19 +50,21 @@ updated: 2026-09-21
 - The stylesheet cache-bust (`styles.css?v=...`) is computed from the file's
   mtime in `routes.py`'s `/` handler, not hand-bumped in `index.html` — see
   `D-0010`. Still no build step, no bundler.
+- Neither `pipeline.py` nor `discovery.py` import `fastapi` any more.
+  `batch_from_state()` and `extract_channel_videos()` raise plain
+  `FileNotFoundError` / `ValueError`; `routes.py` translates them to
+  `HTTPException` at its two call sites. `filter_type` is now validated
+  against `config.ALLOWED_CHANNEL_FILTERS` at the edge, same as `language`
+  and `model_size` already were. See `D-0011`.
 
 ## Next
 
-Nothing queued. `app/youtube.py` (224 lines), `app/discovery.py` (249) and
+Nothing queued. `app/youtube.py` (224 lines), `app/discovery.py` (248) and
 `app/claude_academy.py` (48) all have headroom under the 500-line CI ceiling
 again.
 
 ## Known rough edges
 
-- `pipeline.py` and `discovery.py` both raise `fastapi.HTTPException`, so the
-  HTTP concern leaks past the router. Tolerated because the alternative today
-  is a domain error type plus a translation layer in `routes.py`, and the app
-  has exactly one front end.
 - `models.py` imports `app.youtube` inside two functions to break an import
   cycle. It works and it is deliberate, but it is the kind of thing a reader
   will "fix" without realising. Documented in ARCHITECTURE.md.

@@ -13,7 +13,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from app.claude_academy import fetch_claude_academy_webinars
-from app.config import ALLOWED_LANGUAGES, ALLOWED_MODELS, BASE_DIR, JOBS_DIR, library
+from app.config import ALLOWED_CHANNEL_FILTERS, ALLOWED_LANGUAGES, ALLOWED_MODELS, BASE_DIR, JOBS_DIR, library
 from app.content import build_editorial_material
 from app.discovery import enrich_search_videos, extract_channel_videos, search_video_matches, video_record
 from app.library import LibraryError
@@ -137,7 +137,12 @@ def open_folder(output_dir: str = Form("")) -> JSONResponse:
 
 @router.post("/api/batches/resume")
 def resume_batch(state_path: str = Form(...)) -> JSONResponse:
-    batch = batch_from_state(state_path.strip())
+    try:
+        batch = batch_from_state(state_path.strip())
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     with batch_lock:
         existing = batches.get(batch.id)
         if existing and existing.status in {"queued", "running"}:
@@ -242,6 +247,8 @@ def extract_channel(
 ) -> JSONResponse:
     if not is_youtube_host(urlparse(channel_url.strip()).hostname):
         raise HTTPException(status_code=400, detail="Enter a valid YouTube URL.")
+    if filter_type not in ALLOWED_CHANNEL_FILTERS:
+        raise HTTPException(status_code=400, detail="The requested filter is not valid.")
     if limit <= 0 and filter_type != "all":
         raise HTTPException(status_code=400, detail="The limit must be greater than zero.")
     videos = extract_channel_videos(channel_url.strip(), filter_type, limit)

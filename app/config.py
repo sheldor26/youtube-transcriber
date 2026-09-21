@@ -16,3 +16,4 @@ library = LibraryStore(DATA_DIR / "library.sqlite3")
 
 ALLOWED_MODELS = {"tiny", "base", "small", "medium"}
 ALLOWED_LANGUAGES = {"auto", "es", "en", "pt", "fr", "de"}
+ALLOWED_CHANNEL_FILTERS = {"all", "newest", "oldest", "most_viewed", "most_liked"}
