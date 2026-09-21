@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="YouTube Transcriber" width="600" />
+</p>
+
 # YouTube Transcriber
 
 A local, self-hosted app that turns YouTube videos into text transcripts (TXT/SRT) — no cloud upload, no API keys, no per-minute pricing. It reuses existing YouTube captions/subtitles when available and falls back to local, offline speech-to-text with [faster-whisper](https://github.com/SYSTRAN/faster-whisper) when there are none.

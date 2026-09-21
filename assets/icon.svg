@@ -1,0 +1,23 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg-glow" cx="50%" cy="8%" r="85%">
+      <stop offset="0%" stop-color="#181d24" />
+      <stop offset="100%" stop-color="#0b0d10" />
+    </radialGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffbe5c" />
+      <stop offset="100%" stop-color="#e8a33d" />
+    </linearGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="url(#bg-glow)" />
+  <rect x="1" y="1" width="254" height="254" rx="55" fill="none" stroke="#21262e" stroke-width="2" />
+
+  <!-- play triangle: the video -->
+  <path d="M74 70 L74 186 L152 128 Z" fill="url(#accent)" stroke-linejoin="round" />
+
+  <!-- transcript lines: the text it becomes -->
+  <rect x="150" y="86" width="58" height="12" rx="6" fill="#e8a33d" />
+  <rect x="150" y="122" width="42" height="12" rx="6" fill="#9aa4b1" />
+  <rect x="150" y="158" width="50" height="12" rx="6" fill="#6b7583" />
+</svg>
