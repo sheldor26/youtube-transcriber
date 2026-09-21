@@ -74,22 +74,24 @@ updated: 2026-09-21
   See `D-0014`. `batches` is not pruned — no disk-fallback path exists for
   it the way `jobs` has one, and it grows far slower (one entry per batch,
   not per video).
+- `content.py`'s sentence-deduplication (`build_consolidated_summary()` and
+  `build_editorial_material()`, both O(n²) by nature) now tokenizes each
+  sentence once via `duplicate_signature()` instead of on every pairwise
+  comparison. ~9-10x faster on a synthetic 12,000-sentence batch (112s to
+  11.7s); confirmed to produce byte-identical output before/after. See
+  `D-0015` / `L-0004`. The comparison *count* is unchanged and still
+  unbounded in the number of qualifying sentences.
 
 ## Next
 
 Found during a review pass, not yet acted on:
 
-1. `content.py`'s `build_consolidated_summary()` / `build_knowledge_base()`
-   compare every candidate sentence against every already-selected one with
-   `difflib.SequenceMatcher.ratio()`, an O(n²) cost with no ceiling. Fine for
-   a handful of videos; a batch of hundreds could make this the slowest part
-   of the whole run.
-2. `data/jobs/<id>/` directories (a `job.json` plus a duplicate `.txt`) are
+1. `data/jobs/<id>/` directories (a `job.json` plus a duplicate `.txt`) are
    never removed, for every job ever run — the same leak the audio cleanup
    fix earlier this session solved, but for everything except the audio.
    Deliberately not touched by `D-0014`: deleting these would break the
    disk-fallback that pruning the in-memory `jobs` dict now depends on.
-3. `models.py`'s `batches` dict still grows for the process's lifetime (see
+2. `models.py`'s `batches` dict still grows for the process's lifetime (see
    `D-0014`'s Consequences for why it wasn't pruned alongside `jobs`).
 
 ## Known rough edges

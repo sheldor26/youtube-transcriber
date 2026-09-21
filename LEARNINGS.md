@@ -9,6 +9,33 @@
 > Add entries with: `node .bitacora/cli.mjs new learning "Title" --tags area`
 
 <!-- bitacora:entry
+id: L-0004
+date: 2026-09-21
+tags: [performance, verification]
+-->
+### Verify a performance fix by diffing output before/after, not just timing it
+
+**What worked.** A synthetic benchmark proved `content.py`'s dedup fix was ~9-10x faster
+(112s to 11.7s on 12,000 sentences). That alone wasn't proof nothing broke —
+so the same fixed, seeded input was run through `git stash` (old code) and
+the working tree (new code), and the two output files were diffed
+byte-for-byte. Identical. Two independent, cheap checks instead of one that
+only answers "is it faster."
+
+**Why it worked.** A performance fix makes a claim about behavior, not just speed: that the
+output is unchanged. Timing only tests the speed half of that claim: a
+benchmark that finishes fast doesn't say whether it also silently started
+skipping work. `git stash` gives the "before" version for free, on the exact
+same code that's about to be committed, without keeping a manual copy of the
+old function around.
+
+**Reuse it when.** Any change whose pitch is "same result, faster": a precomputed cache, a
+short-circuit added to a hot loop, swapping one algorithm for another with
+the same contract. Skip it for a change that's supposed to alter output
+(a bug fix, a new filter) — there diffing before/after is expected to fail
+and proves nothing.
+
+<!-- bitacora:entry
 id: L-0003
 date: 2026-09-21
 tags: [ui, process]

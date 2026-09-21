@@ -5,7 +5,7 @@ import re
 from collections import Counter
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from app.models import Batch
 from app.utils import destination_dir_for, sanitize_filename, unique_path, atomic_write_text
@@ -62,19 +62,35 @@ def claim_markers(text: str) -> Dict[str, set[str]]:
     }
 
 
+def duplicate_signature(sentence: str, tokens: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Precompute what sentences_are_duplicate() needs, once per sentence.
+
+    Comparing N sentences pairwise is O(N^2) calls no matter what; the part
+    worth avoiding is redoing the same regex tokenization on every one of
+    those calls instead of once per sentence. Pass `tokens` when the caller
+    already ran summary_tokens() on this sentence for another reason."""
+    markers = claim_markers(sentence)
+    return {
+        "tokens": set(tokens if tokens is not None else summary_tokens(sentence)),
+        "negations": markers["negations"],
+        "numbers": markers["numbers"],
+        "lower": sentence.lower(),
+    }
+
+
+def signatures_are_duplicate(first: Dict[str, Any], second: Dict[str, Any]) -> bool:
+    if bool(first["negations"]) != bool(second["negations"]):
+        return False
+    if first["numbers"] and second["numbers"] and first["numbers"] != second["numbers"]:
+        return False
+    if not first["tokens"] or not second["tokens"]:
+        return False
+    overlap = len(first["tokens"] & second["tokens"]) / max(1, len(first["tokens"] | second["tokens"]))
+    return overlap >= 0.78 and SequenceMatcher(None, first["lower"], second["lower"]).ratio() >= 0.78
+
+
 def sentences_are_duplicate(first: str, second: str) -> bool:
-    first_markers = claim_markers(first)
-    second_markers = claim_markers(second)
-    if bool(first_markers["negations"]) != bool(second_markers["negations"]):
-        return False
-    if first_markers["numbers"] and second_markers["numbers"] and first_markers["numbers"] != second_markers["numbers"]:
-        return False
-    first_tokens = set(summary_tokens(first))
-    second_tokens = set(summary_tokens(second))
-    if not first_tokens or not second_tokens:
-        return False
-    overlap = len(first_tokens & second_tokens) / max(1, len(first_tokens | second_tokens))
-    return overlap >= 0.78 and SequenceMatcher(None, first.lower(), second.lower()).ratio() >= 0.78
+    return signatures_are_duplicate(duplicate_signature(first), duplicate_signature(second))
 
 
 def build_consolidated_summary(batch: Batch) -> Optional[Path]:
@@ -104,6 +120,7 @@ def build_consolidated_summary(batch: Batch) -> Optional[Path]:
                 "url": result.get("url") or "",
                 "sentence": sentence,
                 "tokens": tokens,
+                "signature": duplicate_signature(sentence, tokens),
             })
 
     if not all_sentences:
@@ -121,7 +138,7 @@ def build_consolidated_summary(batch: Batch) -> Optional[Path]:
     selected_words = 0
     max_words = max(500, batch.summary_max_words)
     for candidate in ranked:
-        if any(sentences_are_duplicate(candidate["sentence"], item["sentence"]) for item in selected):
+        if any(signatures_are_duplicate(candidate["signature"], item["signature"]) for item in selected):
             continue
         candidate_words = len(candidate["tokens"])
         if selected and selected_words + candidate_words > max_words:
@@ -136,7 +153,7 @@ def build_consolidated_summary(batch: Batch) -> Optional[Path]:
         item["source_count"] = len({
             source["order"]
             for source in all_sentences
-            if sentences_are_duplicate(item["sentence"], source["sentence"])
+            if signatures_are_duplicate(item["signature"], source["signature"])
         })
     selected.sort(key=lambda item: (item["order"], item["position"]))
     lines = [
@@ -196,7 +213,7 @@ def build_editorial_material(
     if not transcript_files:
         raise RuntimeError("No usable transcripts were found for this research project.")
 
-    manufacturer_sentences = split_sentences(manufacturer_text)
+    manufacturer_signatures = [duplicate_signature(sentence) for sentence in split_sentences(manufacturer_text)]
     candidates = []
     frequency = Counter()
     for source_index, path in enumerate(transcript_files, start=1):
@@ -205,10 +222,14 @@ def build_editorial_material(
             tokens = summary_tokens(sentence)
             if len(tokens) < 5:
                 continue
-            if any(sentences_are_duplicate(sentence, known) for known in manufacturer_sentences):
+            signature = duplicate_signature(sentence, tokens)
+            if any(signatures_are_duplicate(signature, known) for known in manufacturer_signatures):
                 continue
             frequency.update(set(tokens))
-            candidates.append({"sentence": sentence, "tokens": tokens, "theme": editorial_theme(sentence), "position": position, "source_index": source_index})
+            candidates.append({
+                "sentence": sentence, "tokens": tokens, "signature": signature,
+                "theme": editorial_theme(sentence), "position": position, "source_index": source_index,
+            })
 
     ranked = sorted(
         candidates,
@@ -218,7 +239,7 @@ def build_editorial_material(
     selected = []
     selected_words = 0
     for candidate in ranked:
-        if any(sentences_are_duplicate(candidate["sentence"], item["sentence"]) for item in selected):
+        if any(signatures_are_duplicate(candidate["signature"], item["signature"]) for item in selected):
             continue
         words = len(candidate["tokens"])
         if selected and selected_words + words > max_words:
@@ -233,7 +254,7 @@ def build_editorial_material(
         item["source_count"] = len({
             source["source_index"]
             for source in candidates
-            if sentences_are_duplicate(item["sentence"], source["sentence"])
+            if signatures_are_duplicate(item["signature"], source["signature"])
         })
     grouped: Dict[str, List[str]] = {}
     for item in selected:

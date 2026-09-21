@@ -9,6 +9,48 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0015
+date: 2026-09-21
+tags: [performance, content]
+-->
+### Precompute duplicate-detection signatures instead of per-pair tokenizing
+
+**Context.** Found during a review pass: `build_consolidated_summary()` and
+`build_editorial_material()` in `content.py` both dedup candidate sentences
+by calling `sentences_are_duplicate(a, b)` for every pair, and that function
+re-ran `claim_markers()` and `summary_tokens()` — each a regex pass over the
+sentence — from scratch on *every single call*, even though both sentences
+had already been tokenized once when they were added to the candidate list.
+The pairwise structure is inherently O(n²); this made each of those n²
+comparisons redo work that was already sitting in the candidate dict.
+
+**Decision.** Split the function in two: `duplicate_signature(sentence, tokens=None)`
+computes the token set, negation/number markers, and lowercased text once
+(reusing an already-computed token list when the caller has one), and
+`signatures_are_duplicate(sig_a, sig_b)` runs the exact same comparison
+`sentences_are_duplicate()` always did, just against precomputed signatures.
+`sentences_are_duplicate(a, b)` still exists as a thin wrapper for the one
+existing test and any external caller that only has raw strings. Both hot
+functions now build each sentence's (and the manufacturer text's) signature
+once and reuse it across every comparison.
+
+**Consequences.** No algorithmic complexity change — still O(n²) comparisons — but each
+comparison is now several set operations instead of four regex passes.
+Benchmarked with a synthetic batch of distinct (non-near-duplicate)
+sentences, which is the case that actually stresses this path:
+`build_consolidated_summary()` on 300 videos x 40 sentences (12,000
+sentences) went from 112s to 11.7s, roughly 9-10x, consistent from 50
+videos up. Verified as behavior-preserving, not just faster: ran the
+function on a fixed random-seeded dataset before and after the change (via
+`git stash`) and diffed the two output files byte-for-byte — identical.
+What this does *not* fix: the comparison count itself is still unbounded in
+the number of qualifying sentences across a batch, particularly in the
+`source_count` step (`len(selected) x len(all_sentences)`). Capping that
+would change which sentences get counted as duplicates, i.e. change output,
+not just speed — a different, riskier change left for if the 9-10x here
+turns out not to be enough.
+
+<!-- bitacora:entry
 id: D-0014
 date: 2026-09-21
 tags: [architecture, memory]
