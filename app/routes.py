@@ -25,8 +25,8 @@ from app.youtube import is_youtube_host, media_id, parse_urls, search_extract_in
 
 router = APIRouter()
 
-SEARCH_METADATA_CANDIDATE_CAP = 40
-SEARCH_METADATA_TIME_BUDGET_SECONDS = 15
+SEARCH_METADATA_CANDIDATE_CAP = 200
+SEARCH_METADATA_TIME_BUDGET_SECONDS = 25
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -267,8 +267,8 @@ def search_videos(
 ) -> JSONResponse:
     if not query.strip():
         raise HTTPException(status_code=400, detail="Enter a video search query.")
-    if not 1 <= limit <= 50:
-        raise HTTPException(status_code=400, detail="The limit must be between 1 and 50.")
+    if not 1 <= limit <= 200:
+        raise HTTPException(status_code=400, detail="The limit must be between 1 and 200.")
     if sort not in {"relevance", "most_viewed", "newest"}:
         raise HTTPException(status_code=400, detail="The requested sort order is not valid.")
     if video_type not in {"all", "videos", "shorts"}:
@@ -281,7 +281,7 @@ def search_videos(
         raise HTTPException(status_code=400, detail="The requested feature is not valid.")
 
     advanced_filter = video_type != "all" or duration_filter != "any" or upload_filter != "any" or feature != "all"
-    fetch_limit = min(max(limit * (5 if advanced_filter else 1), 20), 100)
+    fetch_limit = min(max(limit * (5 if advanced_filter else 1), 20), 300)
     prefix = "ytsearchdate" if sort == "newest" else "ytsearch"
     search_term = f"{prefix}{fetch_limit}:{query.strip()}"
     info = search_extract_info(search_term, fetch_limit)

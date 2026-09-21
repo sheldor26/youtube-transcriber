@@ -163,7 +163,7 @@
                     Priority
                     <select name="sort"><option value="relevance">Relevance</option><option value="most_viewed">Most viewed</option><option value="newest">Newest</option></select>
                   </label>
-                  <label>Limit<input name="limit" type="number" min="1" max="50" value="10" /></label>
+                  <label>Limit<input name="limit" type="number" min="1" max="200" value="10" /></label>
                   <button id="searchSubmit" type="submit">Search videos</button>
                 </div>
               </form>
@@ -424,7 +424,7 @@
         activeSearchRequest?.controller.abort();
         const request = { controller: new AbortController() };
         activeSearchRequest = request;
-        const timeoutId = window.setTimeout(() => request.controller.abort(), 30000);
+        const timeoutId = window.setTimeout(() => request.controller.abort(), 45000);
         const startedAt = Date.now();
         const progressInterval = window.setInterval(() => {
           searchCount.textContent = `Searching and verifying results... ${Math.floor((Date.now() - startedAt) / 1000)}s`;

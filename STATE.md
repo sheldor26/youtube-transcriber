@@ -98,6 +98,18 @@ updated: 2026-09-21
   permission-denied output folder) and with a new regression test,
   `test_failed_job_still_deletes_downloaded_audio`, checked to fail without
   the fix. See `M-0005`.
+- The "By Topic" search limit is now 1-200 (was 1-50), with `fetch_limit`,
+  `SEARCH_METADATA_CANDIDATE_CAP`, the enrichment time budget, and the
+  client-side abort all raised to match. Verified live: `relevance` sort
+  delivers close to the full 200 in ~11s; `most_viewed`/`newest`/filtered
+  sorts (which need a per-video metadata fetch each) return substantially
+  fewer at that volume — measured 51/200 in 37s — a real ceiling from
+  yt-dlp's per-video cost, not a bug. Accepted as-is; see `D-0017`.
+- A double-clickable macOS launcher, `scripts/run.command`: starts the
+  server on port 8001 if it isn't already running, opens the app in the
+  browser either way. A Desktop shortcut points at it. Standardized the
+  README's Run section on 8001 too (it previously said 8000, which nothing
+  in this session had actually been running on).
 
 ## Next
 

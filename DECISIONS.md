@@ -9,6 +9,41 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0017
+date: 2026-09-21
+tags: [search, performance]
+-->
+### Raise the topic-search limit to 200, accept it degrades for metadata sorts
+
+**Context.** The "By Topic" search form capped `limit` at 50 in three places that all had
+to move together: the HTML input's `max`, `routes.py`'s `1 <= limit <= 50`
+validation, and — less obviously — `fetch_limit` (how many raw entries
+yt-dlp's flat search fetches, capped at 100) and `SEARCH_METADATA_CANDIDATE_CAP`
+(how many of those get per-video metadata enriched for `most_viewed`/
+`newest`/filtered sorts, capped at 40). Raising only the first two would have
+let the UI request 200 while the pipeline behind it silently still returned
+at most 40.
+
+**Decision.** Raised the limit to 200 everywhere it's checked, `fetch_limit`'s ceiling from
+100 to 300, `SEARCH_METADATA_CANDIDATE_CAP` from 40 to 200, the enrichment
+time budget from 15s to 25s, and the client-side abort in `index.html` from
+30s to 45s so a slower request isn't cut off client-side before the server
+even finishes. Measured live rather than assumed: `sort=relevance` (no
+per-video enrichment needed) returned 197/200 in 11s. `sort=most_viewed`
+(needs enrichment) returned only 51/200 in 37s — 142 of 198 candidates were
+still `pending` when the budget ran out. Presented that tradeoff to the user
+before committing to it; they chose to accept it rather than push
+parallelism further to chase closer to 200 on the metadata-heavy sorts.
+
+**Consequences.** "Relevance" (the default sort) now genuinely supports up to 200 results,
+fast. "Most viewed" / "Newest" / any advanced filter still return
+substantially fewer than requested at high limits — a real ceiling from
+needing one yt-dlp subprocess call per candidate video, not a bug to chase
+down. Nothing in the code hides this: the response's `metadata` block
+already reports `attempted`/`completed`/`pending`, so a caller can see
+exactly how much enrichment finished.
+
+<!-- bitacora:entry
 id: D-0016
 date: 2026-09-21
 tags: [architecture, memory]
