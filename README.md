@@ -58,10 +58,14 @@ python -m pip install -r requirements.txt
 
 ```bash
 source .venv/bin/activate
-uvicorn app.main:app --host 127.0.0.1 --port 8000
+uvicorn app.main:app --host 127.0.0.1 --port 8001
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
+Open [http://127.0.0.1:8001](http://127.0.0.1:8001) in your browser.
+
+On macOS, `scripts/run.command` does this for you — double-click it (or a
+shortcut to it) to start the server if it isn't already running and open the
+app in your browser either way.
 
 ## How transcription works
 
