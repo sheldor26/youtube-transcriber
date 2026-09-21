@@ -8,6 +8,13 @@ A local, self-hosted app that turns YouTube videos into text transcripts (TXT/SR
 
 Useful for grabbing a searchable transcript or subtitle file from a tutorial, podcast, lecture, or webinar, transcribing an entire channel or topic in one batch, or building a text-based knowledge base from a set of videos — all running on your own machine.
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Transcribe a single video](assets/screenshots/transcribe.png) | ![Extract links from a channel](assets/screenshots/by-channel.png) |
+| ![Search YouTube by topic](assets/screenshots/by-topic.png) | ![Transcribe a batch of links](assets/screenshots/batch.png) |
+
 ## Features
 
 - Transcribe one supported video or a batch of links.
