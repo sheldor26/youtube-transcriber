@@ -56,6 +56,8 @@ updated: 2026-09-21
   `HTTPException` at its two call sites. `filter_type` is now validated
   against `config.ALLOWED_CHANNEL_FILTERS` at the edge, same as `language`
   and `model_size` already were. See `D-0011`.
+- The local `.venv` runs Python 3.12, matching the README's 3.10+ requirement
+  — it ran on the pre-existing 3.9.6 all session until now. See `D-0012`.
 
 ## Next
 
@@ -71,8 +73,3 @@ again.
 - The library database and job state live in `data/`, which is gitignored in
   full. A contributor cannot reproduce a reported bug from a state file
   without being sent one.
-- The README asks for Python 3.10+; the environment this project has actually
-  been run and tested in all session is 3.9.6. Nothing has broken, likely
-  because every module starts with `from __future__ import annotations`. CI
-  targets 3.10, matching what the README promises, not what was locally
-  verified — untested until CI actually runs against a contribution.

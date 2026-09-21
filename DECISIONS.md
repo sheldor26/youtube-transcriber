@@ -9,6 +9,36 @@
 > Add entries with: `node .bitacora/cli.mjs new decision "Title" --tags area`
 
 <!-- bitacora:entry
+id: D-0012
+date: 2026-09-21
+tags: [environment, verification]
+-->
+### Upgrade the local dev venv to Python 3.12, matching the 3.10+ requirement
+
+**Context.** STATE.md's last rough edge: the README asks for Python 3.10+, but every test
+run and manual verification this session had actually run on the 3.9.6
+`.venv` that predated it. CI already ran on 3.10 and had been green on every
+push, so the gap was between the README and the local dev environment, not
+between the README and reality — but it meant nobody had actually run this
+app locally on a version it claims to require.
+
+**Decision.** Backed up the existing `.venv` (not deleted, in case the newer Python broke a
+dependency) and recreated it with the Python 3.12 already available via
+Homebrew — newer than 3.10, not an exact match, but within the stated
+requirement and the newest interpreter on this machine. Reinstalled
+`requirements.txt` from scratch rather than upgrading in place.
+
+**Consequences.** The local environment now matches what the README promises and what CI has
+been checking all along, closing the gap for real instead of just re-wording
+the rough edge. Verified past "pip install succeeded": all 22 tests pass, and
+a live run of search, channel extraction, the Claude Academy import, and a
+full audio-download-plus-`faster-whisper` transcription all completed
+normally on the new interpreter — the one dependency most likely to break on
+a Python bump. The old `.venv` was removed once all of that passed; recreating
+it means re-downloading everything `requirements.txt` lists, including the
+Whisper model on first use.
+
+<!-- bitacora:entry
 id: D-0011
 date: 2026-09-21
 tags: [architecture]
