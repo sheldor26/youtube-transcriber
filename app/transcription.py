@@ -11,7 +11,6 @@ import shutil
 import textwrap
 
 import webvtt
-from yt_dlp import YoutubeDL
 
 from app.models import Job, TranscriptSegment, update_job
 from app.utils import (
@@ -23,7 +22,13 @@ from app.utils import (
     unique_path,
     vtt_time_to_seconds,
 )
-from app.youtube import download_caption_file, media_platform, pick_caption_track, run_youtube_operation
+from app.youtube import (
+    download_audio_url,
+    download_caption_file,
+    media_platform,
+    pick_caption_track,
+    run_youtube_operation,
+)
 
 whisper_models: Dict[str, Any] = {}
 whisper_models_lock = threading.Lock()
@@ -155,24 +160,10 @@ def download_audio(job: Job, job_dir: Path) -> Path:
         return cached_audio[0]
 
     output_template = str(job_dir / "audio.%(ext)s")
-    options = {
-        "quiet": True,
-        "no_warnings": True,
-        "noplaylist": True,
-        "format": "bestaudio[ext=m4a]/bestaudio/best[acodec!=none]/best",
-        "outtmpl": output_template,
-        "socket_timeout": 15,
-        "retries": 2,
-        "fragment_retries": 2,
-        "extractor_retries": 2,
-        "progress_hooks": [download_progress_hook(job.id)],
-        "extractor_args": {"youtube": {"player_client": ["android", "ios", "tv"]}},
-    }
     update_job(job.id, progress=30, message="Downloading audio")
 
     def download() -> None:
-        with YoutubeDL(options) as ydl:
-            ydl.download([job.url])
+        download_audio_url(job.url, output_template, [download_progress_hook(job.id)])
 
     run_youtube_operation(
         download,

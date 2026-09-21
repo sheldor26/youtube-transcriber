@@ -207,6 +207,11 @@ def ydl_flat_options(limit: Optional[int] = None) -> Dict[str, Any]:
     return options
 
 
+def search_extract_info(search_term: str, fetch_limit: int) -> Optional[Dict[str, Any]]:
+    with YoutubeDL(ydl_flat_options(fetch_limit)) as ydl:
+        return ydl.extract_info(search_term, download=False)
+
+
 def normalize_youtube_url(entry: Dict[str, Any]) -> str:
     url = entry.get("url") or entry.get("webpage_url") or entry.get("id") or ""
     if url.startswith("http"):
@@ -458,6 +463,24 @@ def pick_caption_track(info: Dict[str, Any], language: str) -> Optional[Dict[str
             if selected:
                 return {"url": selected["url"], "language": lang, "source": source_name}
     return None
+
+
+def download_audio_url(url: str, output_template: str, progress_hooks: List[Callable[[Dict[str, Any]], Any]]) -> None:
+    options = {
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "format": "bestaudio[ext=m4a]/bestaudio/best[acodec!=none]/best",
+        "outtmpl": output_template,
+        "socket_timeout": 15,
+        "retries": 2,
+        "fragment_retries": 2,
+        "extractor_retries": 2,
+        "progress_hooks": progress_hooks,
+        "extractor_args": {"youtube": {"player_client": ["android", "ios", "tv"]}},
+    }
+    with YoutubeDL(options) as ydl:
+        ydl.download([url])
 
 
 def download_caption_file(url: str, destination: Any) -> None:

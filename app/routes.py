@@ -11,7 +11,6 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from yt_dlp import YoutubeDL
 
 from app.config import ALLOWED_LANGUAGES, ALLOWED_MODELS, JOBS_DIR, library
 from app.content import build_editorial_material
@@ -27,9 +26,9 @@ from app.youtube import (
     is_youtube_host,
     media_id,
     parse_urls,
+    search_extract_info,
     search_video_matches,
     video_record,
-    ydl_flat_options,
 )
 
 router = APIRouter()
@@ -282,8 +281,7 @@ def search_videos(
     fetch_limit = min(max(limit * (5 if advanced_filter else 1), 20), 100)
     prefix = "ytsearchdate" if sort == "newest" else "ytsearch"
     search_term = f"{prefix}{fetch_limit}:{query.strip()}"
-    with YoutubeDL(ydl_flat_options(fetch_limit)) as ydl:
-        info = ydl.extract_info(search_term, download=False)
+    info = search_extract_info(search_term, fetch_limit)
 
     entries = [entry for entry in (info.get("entries", []) if info else []) if entry and entry.get("id")]
     received_count = len(entries)
