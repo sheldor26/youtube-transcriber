@@ -15,6 +15,19 @@ GOLDCAST_URL = "https://anthropic.ondemand.goldcast.io/on-demand/94d88402-155c-4
 
 
 class CoreBehaviourTests(unittest.TestCase):
+    def test_job_and_batch_default_message_is_english(self):
+        job = models.Job(
+            id="x", url="u", language="auto", model_size="tiny",
+            prefer_captions=True, output_dir="/tmp", save_srt=False,
+        )
+        batch = models.Batch(
+            id="y", urls=[], language="auto", model_size="tiny",
+            prefer_captions=True, output_dir="/tmp", save_srt=False,
+        )
+        self.assertEqual(job.message, "Waiting to start")
+        self.assertEqual(batch.message, "Waiting to start")
+
+
     def test_youtube_url_validation_requires_a_real_youtube_host(self):
         self.assertEqual(youtube.youtube_video_id(f"https://www.youtube.com/watch?v={VIDEO_ID}"), VIDEO_ID)
         self.assertEqual(youtube.youtube_video_id(f"https://youtu.be/{VIDEO_ID}"), VIDEO_ID)

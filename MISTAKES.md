@@ -8,6 +8,35 @@
 > Add entries with: `node .bitacora/cli.mjs new mistake "Title" --tags area,failure-mode`
 
 <!-- bitacora:entry
+id: M-0004
+date: 2026-09-21
+tags: [i18n, verification]
+severity: low
+-->
+### Four Spanish user-facing strings shipped in an English-only app
+
+**What happened.** `models.py`'s `Job`/`Batch` dataclasses defaulted `message` to `"Esperando
+turno"` — the first thing shown for every job or batch ever created — and
+three error strings in `pipeline.py` and `utils.py` were also Spanish, in an
+app whose README, UI copy and every other message are English. Found by
+reading the code during a review pass, not by a test or a bug report.
+
+**Root cause.** Nothing ever asserted the language of a user-facing string. The values were
+carried over from an earlier, Spanish-only version of the app and never
+touched again once the rest of the UI was translated, so nothing about them
+looked new or suspicious in any later diff.
+
+**Guardrail.** Two, covering different parts of what actually leaked: a CI step (`.github/
+workflows/ci.yml`) fails the build if any `app/*.py` file outside
+`content.py` (which legitimately parses Spanish/Portuguese transcript text)
+contains an accented character or ñ/¿/¡; and a new test,
+`test_job_and_batch_default_message_is_english`, pins the exact `Job`/`Batch`
+defaults. Being honest about the gap: none of the four strings that actually
+leaked had an accent, so the CI step would not have caught this specific
+mistake — it only catches a future *accented* leak. The regression test is
+what actually covers the one root cause found.
+
+<!-- bitacora:entry
 id: M-0003
 date: 2026-09-21
 tags: [structure, drift]

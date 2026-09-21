@@ -33,9 +33,10 @@ updated: 2026-09-21
 - A GitHub social-preview image at `assets/social-preview.png` (1280x640,
   recomposed for that aspect ratio rather than stretched from the README
   banner — see `D-0007`), uploaded in the repo's Settings.
-- CI (`.github/workflows/ci.yml`): runs the 22 existing tests and fails the
-  build if any `app/*.py` module exceeds 500 lines, the mechanical half of the
-  guardrail `M-0003` asked for. Verified green on a real push, not just
+- CI (`.github/workflows/ci.yml`): runs the test suite (23 tests) and fails
+  the build if any `app/*.py` module exceeds 500 lines (`M-0003`) or if any
+  file outside `content.py` contains an accented Spanish character (`M-0004`,
+  partial coverage — see that entry). Verified green on a real push, not just
   locally.
 - The yt-dlp surface is now `youtube.py` (one video), `discovery.py` (many
   videos: search, channel listing, metadata enrichment) and
@@ -58,12 +59,29 @@ updated: 2026-09-21
   and `model_size` already were. See `D-0011`.
 - The local `.venv` runs Python 3.12, matching the README's 3.10+ requirement
   — it ran on the pre-existing 3.9.6 all session until now. See `D-0012`.
+- Four leftover Spanish user-facing strings (the `Job`/`Batch` default
+  `message`, two error messages) translated to English. See `M-0004`.
 
 ## Next
 
-Nothing queued. `app/youtube.py` (224 lines), `app/discovery.py` (248) and
-`app/claude_academy.py` (48) all have headroom under the 500-line CI ceiling
-again.
+Found during a review pass, not yet acted on:
+
+1. `pipeline.py`'s batch loop checks `if current_batch.status == "cancelled":
+   return`, but nothing anywhere ever sets a batch to `"cancelled"` — no
+   route, no button. Either dead code to remove, or a half-built cancel
+   feature worth finishing (a batch can run for hours per `D-0004`, with no
+   way to stop one short of killing the process).
+2. `content.py`'s `build_consolidated_summary()` / `build_knowledge_base()`
+   compare every candidate sentence against every already-selected one with
+   `difflib.SequenceMatcher.ratio()`, an O(n²) cost with no ceiling. Fine for
+   a handful of videos; a batch of hundreds could make this the slowest part
+   of the whole run.
+3. `models.py`'s `jobs` and `batches` module-level dicts are never pruned —
+   every job and batch created since the process started stays in memory for
+   its lifetime. Related: `data/jobs/<id>/` directories (a `job.json` plus a
+   duplicate `.txt`) are never removed either, for the same reason the audio
+   cleanup fix earlier this session existed — this is the same leak, for
+   everything except the audio.
 
 ## Known rough edges
 

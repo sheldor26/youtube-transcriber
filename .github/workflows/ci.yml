@@ -31,3 +31,12 @@ jobs:
             echo "Split the module instead of raising the ceiling."
             exit 1
           fi
+
+      - name: Check for leftover Spanish strings (see MISTAKES.md M-0004)
+        run: |
+          leaks=$(grep -rlP "[áéíóúñÁÉÍÓÚÑ¿¡]" app/*.py 2>/dev/null | grep -v '^app/content.py$' || true)
+          if [ -n "$leaks" ]; then
+            echo "These files have Spanish characters outside content.py, which is the only module allowed them (it processes Spanish/Portuguese transcript text, not UI strings):"
+            echo "$leaks"
+            exit 1
+          fi
